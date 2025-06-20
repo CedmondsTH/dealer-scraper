@@ -17,12 +17,10 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Log in to ACR
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ secrets.REGISTRY }}
+    - name: Login to Azure Container Registry
+      run: az acr login --name trackhawkadvisorsacr2
 
     - name: Build & Push image
       run: |
-        docker build -t ${{ secrets.REGISTRY }}/dealer-scraper:latest .
-        docker push ${{ secrets.REGISTRY }}/dealer-scraper:latest
+        docker build -t trackhawkadvisorsacr2.azurecr.io/dealer-scraper:latest .
+        docker push trackhawkadvisorsacr2.azurecr.io/dealer-scraper:latest
