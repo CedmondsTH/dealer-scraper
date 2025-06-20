@@ -1,0 +1,28 @@
+name: Build & Push to ACR
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Log in to ACR
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY }}
+
+    - name: Build & Push image
+      run: |
+        docker build -t ${{ secrets.REGISTRY }}/dealer-scraper:latest .
+        docker push ${{ secrets.REGISTRY }}/dealer-scraper:latest
