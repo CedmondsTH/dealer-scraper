@@ -208,6 +208,63 @@ def extract_dealer_data(html: str, page_url: str) -> list[dict]:
             })
 
     canadian_provinces = {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
+    # Strategy: Pritchard Family Auto Stores-specific HTML parsing - div.well.matchable-heights (with conflict detection)
+    well_cards = soup.select("div.well.matchable-heights")
+    if well_cards:
+        # Check if this looks like AutoCanada/Ken Garff pattern vs Pritchard pattern
+        sample_card = well_cards[0]
+        has_dealer_address = sample_card.select_one("span.di-dealer-address")
+        has_dealer_phone = sample_card.select_one("span.dealer-phone")
+        
+        # If it has AutoCanada/Ken Garff specific elements, skip Pritchard parsing
+        if not (has_dealer_address and has_dealer_phone):
+            # This looks like Pritchard pattern
+            for card in well_cards:
+                name_el = card.select_one("h2")
+                address_parts = []
+                phone = ""
+                website = page_url
+                
+                # Extract all text content and parse structure
+                for p in card.find_all("p"):
+                    text = p.get_text(strip=True)
+                    if not text:
+                        continue
+                        
+                    # Check if this is a phone number
+                    if re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text):
+                        phone = text
+                    else:
+                        # Assume it's part of the address
+                        address_parts.append(text)
+                
+                # Look for website link
+                website_el = card.select_one("a[href^='http']")
+                if website_el:
+                    website = website_el["href"]
+                
+                name = name_el.get_text(strip=True) if name_el else ""
+                full_address = ", ".join(address_parts)
+                
+                # Parse the combined address
+                street, city, state, zipc = parse_address(full_address)
+                
+                if name and full_address:
+                    dealers.append({
+                        "name": name,
+                        "street": street,
+                        "city": city,
+                        "state": state,
+                        "zip": zipc,
+                        "phone": phone,
+                        "website": website
+                    })
+            
+            # Skip the original AutoCanada parsing since we handled these cards
+        else:
+            # This looks like AutoCanada/Ken Garff, proceed with original parsing
+            pass
+
     # Strategy: AutoCanada-specific HTML parsing
     for card in soup.select("div.well.matchable-heights"):
         name_el = card.select_one("h2")
@@ -467,6 +524,159 @@ def extract_dealer_data(html: str, page_url: str) -> list[dict]:
                 "zip": zipc,
                 "phone": phone,
                 "website": website
+            })
+
+    # Strategy: Open Road-specific HTML parsing - li.location-result
+    for card in soup.select("li.location-result"):
+        name_el = card.select_one("h2.name")
+        address_el = card.select_one("div.address")
+        
+        name = name_el.get_text(strip=True) if name_el else ""
+        address = address_el.get_text(" ", strip=True) if address_el else ""
+        
+        # Parse address: "108 Ridgedale Avenue<br>Morristown, NJ, United States"
+        street, city, state, zipc = parse_address(address)
+        
+        if name and address:
+            dealers.append({
+                "name": name,
+                "street": street,
+                "city": city,
+                "state": state,
+                "zip": zipc,
+                "phone": "",
+                "website": page_url
+            })
+
+    # Strategy: Sierra Auto Group-specific HTML parsing - div.dealerInfo
+    for card in soup.select("div.dealerInfo"):
+        name_el = card.select_one("h2.dealerBrand")
+        address1_el = card.select_one("div.dealerAddress1")
+        address2_el = card.select_one("div.dealerAddress2")
+        phone_el = card.select_one("div.dealerPhone")
+        website_el = card.select_one("div.dealerCTA a")
+        
+        name = name_el.get_text(strip=True) if name_el else ""
+        address1 = address1_el.get_text(strip=True) if address1_el else ""
+        address2 = address2_el.get_text(strip=True) if address2_el else ""
+        phone = phone_el.get_text(strip=True) if phone_el else ""
+        website = website_el["href"] if website_el and website_el.has_attr("href") else page_url
+        
+        # Combine address parts
+        full_address = f"{address1}, {address2}" if address1 and address2 else (address1 or address2)
+        street, city, state, zipc = parse_address(full_address)
+        
+        if name and full_address:
+            dealers.append({
+                "name": name,
+                "street": street,
+                "city": city,
+                "state": state,
+                "zip": zipc,
+                "phone": phone,
+                "website": website
+            })
+
+    # Strategy: Gregory Auto Group-specific HTML parsing - Fusion builder columns
+    for card in soup.select("div.fusion-layout-column"):
+        name_el = card.select_one("h4.fusion-title-heading")
+        text_el = card.select_one("div.fusion-text")
+        website_el = None
+        
+        # Look for "Visit website" button or any fusion button
+        for button in card.select("a.fusion-button"):
+            if "website" in button.get_text(strip=True).lower():
+                website_el = button
+                break
+        
+        if not name_el:
+            continue
+            
+        name = name_el.get_text(strip=True)
+        
+        # Initialize defaults
+        street, city, state, zipc, phone = "", "", "", "", ""
+        
+        if text_el:
+            text_content = text_el.get_text("\n", strip=True)
+            
+            # Parse text content which contains address and phone
+            # Format: "Address\nCity, State Zip\nCall: (phone)"
+            lines = [line.strip() for line in text_content.split("\n") if line.strip()]
+            
+            if len(lines) >= 1:
+                # First line is usually the street address
+                street = lines[0]
+                
+                # Look for city, state, zip in subsequent lines
+                for line in lines[1:]:
+                    # Check if this line looks like "City, State Zip"
+                    city_state_match = re.match(r"^([^,]+),\s*([A-Z]{2})\s+(\d{5})$", line.strip())
+                    if city_state_match:
+                        city = city_state_match.group(1).strip()
+                        state = city_state_match.group(2).strip()
+                        zipc = city_state_match.group(3).strip()
+                        continue
+                        
+                    # Check for phone number
+                    if "call:" in line.lower():
+                        phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', line)
+                        if phone_match:
+                            phone = phone_match.group()
+                
+                # If we didn't find structured address, try full address parsing
+                if not city and len(lines) >= 2:
+                    full_address = f"{street}, {lines[1]}"
+                    street_parsed, city_parsed, state_parsed, zip_parsed = parse_address(full_address)
+                    if city_parsed:  # Only use if parsing was successful
+                        street, city, state, zipc = street_parsed, city_parsed, state_parsed, zip_parsed
+        
+        website = website_el["href"] if website_el and website_el.has_attr("href") else page_url
+        
+        # Only require name to be present (address might be optional for some listings)
+        if name:
+            dealers.append({
+                "name": name,
+                "street": street,
+                "city": city,
+                "state": state,
+                "zip": zipc,
+                "phone": phone,
+                "website": website
+            })
+
+    # Strategy: Wash U Car Wash-specific HTML parsing 
+    print(f"DEBUG: Looking for Wash U Car Wash patterns...", file=sys.stderr)
+    wash_u_cards = soup.select("div[class*='pol-']")
+    print(f"DEBUG: Found {len(wash_u_cards)} div[class*='pol-'] elements", file=sys.stderr)
+    
+    for card in wash_u_cards:
+        name_el = card.select_one("p.sl-addr-list-title")
+        address_el = card.select_one("li.sl-addr span")
+        phone_el = card.select_one("li.sl-phone a")
+        
+        if not name_el:
+            continue
+            
+        name = f"Wash U Car Wash - {name_el.get_text(strip=True)}"
+        address = address_el.get_text(" ", strip=True) if address_el else ""
+        phone = phone_el.get_text(strip=True) if phone_el else ""
+        
+        print(f"DEBUG: Wash U extracted - name: '{name}', address: '{address}', phone: '{phone}'", file=sys.stderr)
+        
+        # Parse address which may have <br> tags
+        address = re.sub(r'<br\s*/?>', ' ', address)
+        street, city, state, zipc = parse_address(address)
+        
+        if name and address:
+            dealers.append({
+                "name": name,
+                "street": street,
+                "city": city,
+                "state": state,
+                "zip": zipc,
+                "phone": phone,
+                "website": page_url
             })
 
     # Filter out non-dealerships
