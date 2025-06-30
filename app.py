@@ -679,6 +679,81 @@ def extract_dealer_data(html: str, page_url: str) -> list[dict]:
                 "website": page_url
             })
 
+    # Strategy: All American Auto Group-specific HTML parsing
+    print(f"DEBUG: Looking for All American Auto Group patterns...", file=sys.stderr)
+    
+    # Look for h3 elements with class "h4" (the specific structure used by All American Auto Group)
+    for h3 in soup.select("h3.h4"):
+        h3_text = h3.get_text(strip=True)
+        if not h3_text or "all american" not in h3_text.lower():
+            continue
+            
+        print(f"DEBUG: Found potential dealer h3.h4: '{h3_text}'", file=sys.stderr)
+        
+        # Initialize variables
+        name = h3_text
+        street, city, state, zipc, phone = "", "", "", "", ""
+        website = page_url
+        
+        # Look for the following p element with address information
+        p_element = h3.find_next_sibling("p")
+        if p_element:
+            # Get the HTML content to handle <br> tags properly
+            p_html = str(p_element)
+            # Split on <br> tags to get address lines
+            address_lines = re.split(r'<br\s*/?>', p_html)
+            # Clean up each line
+            address_lines = [re.sub(r'<[^>]+>', '', line).strip() for line in address_lines if line.strip()]
+            
+            print(f"DEBUG: Found address lines from p element: {address_lines}", file=sys.stderr)
+            
+            if len(address_lines) >= 2:
+                street = address_lines[0]
+                # Second line should be city, state, zip
+                city_state_zip = address_lines[1]
+                
+                # Parse "City, State, ZIP" format 
+                match = re.match(r"^(.+?),\s*([A-Z]{2}),?\s*(\d{5})$", city_state_zip.strip())
+                if match:
+                    city = match.group(1).strip()
+                    state = match.group(2).strip()
+                    zipc = match.group(3).strip()
+                else:
+                    # Try alternative parsing
+                    parts = city_state_zip.replace(',', '').split()
+                    if len(parts) >= 3:
+                        zipc = parts[-1] if parts[-1].isdigit() else ""
+                        state = parts[-2] if len(parts[-2]) == 2 else ""
+                        city = " ".join(parts[:-2])
+            elif len(address_lines) == 1:
+                # Single address line, try to parse it
+                full_address = address_lines[0]
+                street, city, state, zipc = parse_address(full_address)
+        
+        # Look for the following a element with class "btn btn-cta" for website
+        a_element = h3.find_next_sibling("a", class_="btn")
+        if not a_element:
+            # Try looking within the parent container
+            parent = h3.parent
+            if parent:
+                a_element = parent.find("a", class_="btn")
+        
+        if a_element and a_element.has_attr("href"):
+            website = a_element["href"]
+            print(f"DEBUG: Found website link: {website}", file=sys.stderr)
+        
+        if name and street:
+            dealers.append({
+                "name": name,
+                "street": street,
+                "city": city,
+                "state": state,
+                "zip": zipc,
+                "phone": phone,
+                "website": website
+            })
+            print(f"DEBUG: Added dealer: {name} at {street}, {city}, {state} {zipc}", file=sys.stderr)
+
     # Filter out non-dealerships
     def is_valid_dealership(d):
         bad_names = {"locations", "saved", "community news", "essential cookies", "sales", "service phone:", "parts phone:"}
@@ -800,7 +875,9 @@ def _scrape_rows(dealer_name: str, url: str) -> list[dict]:
         # Check if this page already contains dealership cards
         soup = BeautifulSoup(html, "html.parser")
         has_dealer_cards = bool(
-            soup.select("li.info-window, div.dealer-card, div.location-card, div.g1-location-card, div.well.matchable-heights, div.car-details, div.panel.panel-default")
+            soup.select("li.info-window, div.dealer-card, div.location-card, div.g1-location-card, div.well.matchable-heights, div.car-details, div.panel.panel-default") or
+            # Check for All American Auto Group pattern (h3.h4 with "all american" text)
+            [h3 for h3 in soup.select("h3.h4") if "all american" in h3.get_text(strip=True).lower()]
         )
         if has_dealer_cards:
             # Extract and return immediately, no extra scrolling/waiting
