@@ -1,11 +1,19 @@
 import sys
 import json
 import re
+import os
+import csv
+from datetime import datetime
 from io import BytesIO
 from urllib.parse import urlparse
 import pandas as pd
 from bs4 import BeautifulSoup
 import streamlit as st
+import google.generativeai as genai
+
+# Configure Gemini API
+GEMINI_API_KEY = "AIzaSyAL1RbvKdnMKv-ljlI5fAAqpiEx5NDx824"
+genai.configure(api_key=GEMINI_API_KEY)
 
 print("app.py sys.executable:", sys.executable, file=sys.stderr)
 print("app.py started", file=sys.stderr)  # Debug: confirm script starts
@@ -787,6 +795,92 @@ def extract_dealer_data(html: str, page_url: str) -> list[dict]:
             unique.append(d)  # keep entries missing name or street
     return unique
 
+def log_gemini_success(dealer_name: str, url: str, dealers_found: int, html_snippet: str = ""):
+    """Log when Gemini successfully finds dealerships for pattern development"""
+    log_file = "gemini_successes.csv"
+    file_exists = os.path.exists(log_file)
+    
+    with open(log_file, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['timestamp', 'dealer_group', 'url', 'dealers_found', 'html_snippet'])
+        
+        writer.writerow([
+            datetime.now().isoformat(),
+            dealer_name,
+            url,
+            dealers_found,
+            html_snippet[:500] + "..." if len(html_snippet) > 500 else html_snippet
+        ])
+    
+    print(f"DEBUG: Logged Gemini success for {dealer_name} - {dealers_found} dealers found", file=sys.stderr)
+
+def extract_with_gemini(html: str, dealer_name: str, url: str) -> list[dict]:
+    """Use Gemini as intelligent fallback when hardcoded patterns fail"""
+    print("DEBUG: Attempting Gemini extraction fallback", file=sys.stderr)
+    
+    try:
+        # Use Gemini 1.5 Flash-8B for cost efficiency
+        model = genai.GenerativeModel('gemini-1.5-flash-8b')
+        
+        # Truncate HTML to avoid token limits and focus on relevant content
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Remove script tags, style tags, and other noise
+        for tag in soup(['script', 'style', 'nav', 'header', 'footer']):
+            tag.decompose()
+        
+        # Get text content and first 15000 characters to stay within token limits
+        clean_html = str(soup)[:15000]
+        
+        prompt = f"""
+Analyze this HTML from {dealer_name}'s website ({url}) and extract dealership location information.
+
+Extract each dealership/location as a JSON object with these fields:
+- name: Full dealership name
+- street: Street address  
+- city: City name
+- state: State/province (2-letter code if possible)
+- zip: Postal/ZIP code
+- phone: Phone number (clean format)
+- website: Website URL (use provided URL if specific dealership site not found)
+
+Return ONLY a valid JSON array of dealership objects. No explanation or additional text.
+
+HTML content:
+{clean_html}
+"""
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Clean response - remove markdown formatting if present
+        if response_text.startswith('```json'):
+            response_text = response_text[7:-3]
+        elif response_text.startswith('```'):
+            response_text = response_text[3:-3]
+        
+        print(f"DEBUG: Gemini response: {response_text[:200]}...", file=sys.stderr)
+        
+        # Parse JSON response
+        dealers = json.loads(response_text)
+        
+        if not isinstance(dealers, list):
+            dealers = [dealers] if isinstance(dealers, dict) else []
+        
+        print(f"DEBUG: Gemini extracted {len(dealers)} dealerships", file=sys.stderr)
+        
+        # Log this success for future pattern development
+        if len(dealers) > 0:
+            log_gemini_success(dealer_name, url, len(dealers), clean_html[:1000])
+        
+        return dealers
+        
+    except Exception as e:
+        print(f"DEBUG: Gemini extraction failed: {e}", file=sys.stderr)
+        return []
+
 def extract_directory_links(html: str, base_url: str) -> list:
     """Extracts subpage links from a directory page (e.g., state/make/region links) using pattern matching."""
     soup = BeautifulSoup(html, "html.parser")
@@ -932,7 +1026,16 @@ def _scrape_rows(dealer_name: str, url: str) -> list[dict]:
                 # Aggregate all dealership data
                 all_dealers = []
                 for html in all_html:
-                    all_dealers.extend(extract_dealer_data(html, url))
+                    dealers = extract_dealer_data(html, url)
+                    
+                    # If no dealerships found on this subpage, try Gemini
+                    if len(dealers) == 0:
+                        print("DEBUG: No dealerships found on subpage with patterns, trying Gemini", file=sys.stderr)
+                        dealers = extract_with_gemini(html, dealer_name, url)
+                        if len(dealers) > 0:
+                            print(f"DEBUG: Gemini found {len(dealers)} on subpage", file=sys.stderr)
+                    
+                    all_dealers.extend(dealers)
                 print(f"DEBUG: Total dealers extracted from subpages: {len(all_dealers)}", file=sys.stderr)
                 return all_dealers
         # Not a directory page, or already contains dealer cards (should not reach here, but fallback)
@@ -948,7 +1051,23 @@ def _scrape_rows(dealer_name: str, url: str) -> list[dict]:
     print("Finished Playwright scrape", file=sys.stderr)
     with open("debug_lithia.html", "w", encoding="utf-8") as f:
         f.write(html)
-    return extract_dealer_data(html, url)
+    
+    # Try hardcoded patterns first
+    dealers = extract_dealer_data(html, url)
+    
+    # If no dealerships found, try Gemini as intelligent fallback
+    if len(dealers) == 0:
+        print("DEBUG: No dealerships found with hardcoded patterns, trying Gemini fallback", file=sys.stderr)
+        dealers = extract_with_gemini(html, dealer_name, url)
+        
+        if len(dealers) > 0:
+            print(f"DEBUG: 🎉 Gemini fallback SUCCESS! Found {len(dealers)} dealerships", file=sys.stderr)
+        else:
+            print("DEBUG: Gemini fallback also found no dealerships", file=sys.stderr)
+    else:
+        print(f"DEBUG: Hardcoded patterns found {len(dealers)} dealerships, skipping Gemini", file=sys.stderr)
+    
+    return dealers
 
 if __name__ == "__main__" and len(sys.argv) > 1:
     if len(sys.argv) != 3:

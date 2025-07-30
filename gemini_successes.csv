@@ -1,0 +1,19 @@
+timestamp,dealer_group,url,dealers_found,html_snippet
+2025-07-30T11:35:15.998196,Test Dealer Group,https://test.com,2,"
+<html>
+<body>
+<div class=""dealership-location"">
+<h3>Sample Ford Dealership</h3>
+<p>123 Main Street<br/>Anytown, TX 12345</p>
+<p>Phone: (555) 123-4567</p>
+<a href=""https://www.sampleford.com"">Visit Website</a>
+</div>
+<div class=""dealership-location"">
+<h3>Another Car Lot</h3>
+<p>456 Oak Ave<br/>Different City, CA 98765</p>
+<p>Phone: (555) 987-6543</p>
+<a href=""https://www.anothercars.com"">Learn More</a>
+</div>
+</body>
+</html>
+"
