@@ -4,3 +4,4 @@ beautifulsoup4
 playwright
 openpyxl
 google-generativeai
+python-dotenv
