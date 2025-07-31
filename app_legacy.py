@@ -1,5 +1,5 @@
 """
-Dealership Data Scraper
+Dealership Data Scraper - LEGACY VERSION (refactored to new modular structure)
 
 A professional web scraping application that extracts dealership information
 from automotive group websites using intelligent pattern recognition and 
@@ -13,101 +13,33 @@ import json
 import re
 import os
 import csv
-import logging
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import urlparse
-from typing import List, Dict, Tuple, Optional
-
 import pandas as pd
 from bs4 import BeautifulSoup
 import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO')),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Configuration and validation
-def validate_configuration() -> None:
-    """Validate required environment variables and configuration."""
-    required_vars = ['GEMINI_API_KEY']
-    missing_vars = []
-    
-    for var in required_vars:
-        if not os.getenv(var):
-            missing_vars.append(var)
-    
-    if missing_vars:
-        error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
-        logger.error(error_msg)
-        if 'STREAMLIT_RUNTIME_EXISTS' not in os.environ:  # Only show in CLI mode
-            print(f"Error: {error_msg}", file=sys.stderr)
-            print("Please create a .env file with your configuration. See .env.example for reference.", file=sys.stderr)
-            sys.exit(1)
-        else:
-            st.error(f"Configuration Error: {error_msg}")
-            st.info("Please set up your environment variables. Contact your administrator for help.")
-            st.stop()
-
-# Validate configuration on startup
-validate_configuration()
+# Load environment variables (optional)
+try:
+    load_dotenv()
+except Exception:
+    pass  # Continue if .env file doesn't exist or has issues
 
 # Configure Gemini API
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    logger.info("Gemini AI configured successfully")
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyAL1RbvKdnMKv-ljlI5fAAqpiEx5NDx824')
+genai.configure(api_key=GEMINI_API_KEY)
 
-# Application constants
-MAX_DEALERSHIPS = int(os.getenv('MAX_DEALERSHIPS', '1000'))
-PLAYWRIGHT_TIMEOUT = int(os.getenv('PLAYWRIGHT_TIMEOUT', '60000'))
-
-# Supported car brands for classification
-CAR_BRANDS = [
-    "Acura", "Airstream", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti", "Cadillac", "Chevrolet",
-    "Ferrari", "FIAT", "Ford", "Genesis", "GMC", "Honda", "Hummer", "Hyundai", "Infiniti", "Isuzu", "Jaguar", "Kia",
-    "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Maserati", "Mazda", "McLaren", "Mercedes-Benz", "Mini",
-    "Mitsubishi", "Nissan", "Polestar", "Porsche", "Rolls-Royce", "smart", "Sprinter", "Subaru", "Tesla", "Toyota",
-    "Volkswagen", "Volvo", "Lotus", "INEOS", "Koenigsegg", "Harley-Davidson", "Rimac", "Karma", "Lucid", "Vinfast",
-    "CDJR", "CDJRF", "Buick GMC", "Rivian", "Ford PRO", "GMC/Chevy Business Elite", "RAM Commercial", "Freightliner",
-    "Western Star", "International", "Peterbilt", "Kenworth", "Mack", "Hino", "Capacity", "Autocar", "Fuso", "Maybach",
-    "Pagani", "Chrysler", "Dodge", "Scion", "Jeep"
-]
-
-# Canadian provinces for country classification
-CANADIAN_PROVINCES = {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
-
-logger.info(f"Python executable: {sys.executable}")
-logger.info("Dealership scraper application started")
+print("app.py sys.executable:", sys.executable, file=sys.stderr)
+print("app.py started", file=sys.stderr)  # Debug: confirm script starts
 
 # --------------------------- ADDRESS PARSING HELPER ---------------------------
-def parse_address(address_text: str) -> Tuple[str, str, str, str]:
+def parse_address(address_text: str) -> tuple[str, str, str, str]:
     """
-    Parses a combined address string into standardized components.
-    
-    Handles both US (ZIP code) and Canadian (Postal Code) formats with intelligent
-    pattern matching for various address formats commonly found on dealership websites.
-    
-    Args:
-        address_text (str): Raw address string to parse
-        
-    Returns:
-        Tuple[str, str, str, str]: (street, city, state/province, postal_code)
-        
-    Examples:
-        >>> parse_address("123 Main St, Seattle, WA 98101")
-        ('123 Main St', 'Seattle', 'WA', '98101')
-        
-        >>> parse_address("456 Oak Ave, Toronto, ON M5V 3A8")
-        ('456 Oak Ave', 'Toronto', 'ON', 'M5V 3A8')
+    Parses a combined address string into street, city, state/province, and postal code.
+    Handles both US (ZIP code) and Canadian (Postal Code) formats.
     """
     street, city, state, postal_code = "", "", "", ""
 
@@ -177,31 +109,8 @@ def parse_address(address_text: str) -> Tuple[str, str, str, str]:
 
 # --------------------------- DATA EXTRACTION ---------------------------
 
-def extract_dealer_data(html: str, page_url: str) -> List[Dict[str, str]]:
-    """
-    Extract dealership records using multiple intelligent extraction strategies.
-    
-    Employs a comprehensive approach with 12+ extraction patterns including JSON-LD
-    structured data, JavaScript variable arrays, and HTML selector patterns optimized
-    for major automotive group websites.
-    
-    Args:
-        html (str): Raw HTML content from the dealership website
-        page_url (str): URL of the page being scraped (used as fallback website)
-        
-    Returns:
-        List[Dict[str, str]]: List of standardized dealership records with fields:
-            - name: Dealership name
-            - street: Street address
-            - city: City name  
-            - state: State/province code
-            - zip: Postal/ZIP code
-            - phone: Contact phone number
-            - website: Dealership website URL
-            
-    Note:
-        Results are automatically filtered for validity and deduplicated before returning.
-    """
+def extract_dealer_data(html: str, page_url: str) -> list[dict]:
+    """Extract dealership records using JSON-LD, JS arrays, HTML selectors, and Lithia-specific parsing."""
     soup = BeautifulSoup(html, "html.parser")
     dealers = []
 
@@ -903,19 +812,8 @@ def extract_dealer_data(html: str, page_url: str) -> List[Dict[str, str]]:
             unique.append(d)  # keep entries missing name or street
     return unique
 
-def log_gemini_success(dealer_name: str, url: str, dealers_found: int, html_snippet: str = "") -> None:
-    """
-    Log successful Gemini extractions for future pattern development.
-    
-    Creates a CSV log file tracking when the AI fallback successfully extracts
-    dealerships, enabling analysis for developing new hardcoded patterns.
-    
-    Args:
-        dealer_name (str): Name of the dealer group
-        url (str): URL that was scraped
-        dealers_found (int): Number of dealerships successfully extracted
-        html_snippet (str, optional): Sample HTML for pattern analysis
-    """
+def log_gemini_success(dealer_name: str, url: str, dealers_found: int, html_snippet: str = ""):
+    """Log when Gemini successfully finds dealerships for pattern development"""
     log_file = "gemini_successes.csv"
     file_exists = os.path.exists(log_file)
     
@@ -932,29 +830,11 @@ def log_gemini_success(dealer_name: str, url: str, dealers_found: int, html_snip
             html_snippet[:500] + "..." if len(html_snippet) > 500 else html_snippet
         ])
     
-    logger.info(f"Logged Gemini success for {dealer_name} - {dealers_found} dealers found")
+    print(f"DEBUG: Logged Gemini success for {dealer_name} - {dealers_found} dealers found", file=sys.stderr)
 
-def extract_with_gemini(html: str, dealer_name: str, url: str) -> List[Dict[str, str]]:
-    """
-    Use Gemini AI as intelligent fallback when hardcoded patterns fail.
-    
-    Leverages Google's Gemini 1.5 Flash-8B model for cost-effective extraction
-    when traditional pattern matching doesn't find any dealerships. Automatically
-    cleans HTML and structures the AI prompt for optimal results.
-    
-    Args:
-        html (str): Raw HTML content from the website
-        dealer_name (str): Name of the dealer group for context
-        url (str): Source URL for reference
-        
-    Returns:
-        List[Dict[str, str]]: Extracted dealership data in standard format
-        
-    Note:
-        Successful extractions are automatically logged for pattern development.
-                Uses truncated HTML (15,000 chars) to stay within token limits.
-    """
-    logger.info("Attempting Gemini extraction fallback")
+def extract_with_gemini(html: str, dealer_name: str, url: str) -> list[dict]:
+    """Use Gemini as intelligent fallback when hardcoded patterns fail"""
+    print("DEBUG: Attempting Gemini extraction fallback", file=sys.stderr)
     
     try:
         # Use Gemini 1.5 Flash-8B for cost efficiency
@@ -998,7 +878,7 @@ HTML content:
         elif response_text.startswith('```'):
             response_text = response_text[3:-3]
         
-        logger.debug(f"Gemini response: {response_text[:200]}...")
+        print(f"DEBUG: Gemini response: {response_text[:200]}...", file=sys.stderr)
         
         # Parse JSON response
         dealers = json.loads(response_text)
@@ -1006,7 +886,7 @@ HTML content:
         if not isinstance(dealers, list):
             dealers = [dealers] if isinstance(dealers, dict) else []
         
-        logger.info(f"Gemini extracted {len(dealers)} dealerships")
+        print(f"DEBUG: Gemini extracted {len(dealers)} dealerships", file=sys.stderr)
         
         # Log this success for future pattern development
         if len(dealers) > 0:
@@ -1014,11 +894,11 @@ HTML content:
         
         return dealers
         
-            except Exception as e:
-        logger.error(f"Gemini extraction failed: {e}")
+    except Exception as e:
+        print(f"DEBUG: Gemini extraction failed: {e}", file=sys.stderr)
         return []
 
-def extract_directory_links(html: str, base_url: str) -> List[str]:
+def extract_directory_links(html: str, base_url: str) -> list:
     """Extracts subpage links from a directory page (e.g., state/make/region links) using pattern matching."""
     soup = BeautifulSoup(html, "html.parser")
     links = []
@@ -1060,7 +940,7 @@ def is_dealer_inspire(html: str) -> bool:
 
 # --------------------------- CLI SCRAPER ---------------------------
 
-def _scrape_rows(dealer_name: str, url: str) -> List[Dict[str, str]]:
+def _scrape_rows(dealer_name: str, url: str) -> list[dict]:
     print("Starting Playwright scrape for:", url, file=sys.stderr)
     from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
     import time
@@ -1185,7 +1065,9 @@ def _scrape_rows(dealer_name: str, url: str) -> List[Dict[str, str]]:
             page.wait_for_timeout(1500)
         html = page.content()
         browser.close()
-    logger.info("Finished Playwright scrape")
+    print("Finished Playwright scrape", file=sys.stderr)
+    with open("debug_lithia.html", "w", encoding="utf-8") as f:
+        f.write(html)
     
     # Try hardcoded patterns first
     dealers = extract_dealer_data(html, url)
@@ -1222,9 +1104,18 @@ if __name__ == "__main__" and len(sys.argv) > 1:
 if "scrape_cache" not in st.session_state:
     st.session_state.scrape_cache = {}
 
-# Use constants defined at top of file
+car_brands = [
+    "Acura", "Airstream", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti", "Cadillac", "Chevrolet",
+    "Ferrari", "FIAT", "Ford", "Genesis", "GMC", "Honda", "Hummer", "Hyundai", "Infiniti", "Isuzu", "Jaguar", "Kia",
+    "Lamborghini", "Land Rover", "Lexus", "Lincoln", "Maserati", "Mazda", "McLaren", "Mercedes-Benz", "Mini",
+    "Mitsubishi", "Nissan", "Polestar", "Porsche", "Rolls-Royce", "smart", "Sprinter", "Subaru", "Tesla", "Toyota",
+    "Volkswagen", "Volvo", "Lotus", "INEOS", "Koenigsegg", "Harley-Davidson", "Rimac", "Karma", "Lucid", "Vinfast",
+    "CDJR", "CDJRF", "Buick GMC", "Rivian", "Ford PRO", "GMC/Chevy Business Elite", "RAM Commercial", "Freightliner",
+    "Western Star", "International", "Peterbilt", "Kenworth", "Mack", "Hino", "Capacity", "Autocar", "Fuso", "Maybach",
+    "Pagani", "Chrysler", "Dodge", "Scion", "Jeep"
+]
 
-def classify_dealer_type(name: str, brand_list: List[str]) -> str:
+def classify_dealer_type(name, brand_list):
     name_lower = name.lower() if isinstance(name, str) else ''
     # Collision
     if any(word in name_lower for word in [
@@ -1275,13 +1166,13 @@ def scrape_with_external(dealer_name: str, url: str) -> pd.DataFrame:
             # Remove any hardcoded assignment to 'Franchised' for Dealership Type
             # Assign Dealership Type using the classification function
             if "Dealership" in df.columns:
-                df["Dealership Type"] = df["Dealership"].apply(lambda x: classify_dealer_type(x, CAR_BRANDS))
+                df["Dealership Type"] = df["Dealership"].apply(lambda x: classify_dealer_type(x, car_brands))
             else:
-                df["Dealership Type"] = df["name"].apply(lambda x: classify_dealer_type(x, CAR_BRANDS))
+                df["Dealership Type"] = df["name"].apply(lambda x: classify_dealer_type(x, car_brands))
             # Set Country based on state/province
-            # Set Country based on state/province
+            canadian_provinces = {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
             if "State/Province" in df.columns:
-                df["Country"] = df["State/Province"].apply(lambda x: "Canada" if str(x).strip() in CANADIAN_PROVINCES else "United States of America")
+                df["Country"] = df["State/Province"].apply(lambda x: "Canada" if str(x).strip() in canadian_provinces else "United States of America")
             else:
                 df["Country"] = "United States of America"
             def extract_brand(name):
@@ -1292,7 +1183,7 @@ def scrape_with_external(dealer_name: str, url: str) -> pd.DataFrame:
                 # Check for CDJR (Chrysler, Jeep, Dodge, Ram)
                 if all(word in name_lower for word in ['chrysler', 'jeep', 'dodge', 'ram']):
                     return 'CDJR'
-                found_brands = [brand for brand in CAR_BRANDS if brand.lower() in name_lower]
+                found_brands = [brand for brand in car_brands if brand.lower() in name_lower]
                 if found_brands:
                     return "; ".join(found_brands)
                 return ""
@@ -1354,7 +1245,7 @@ def scrape_with_external(dealer_name: str, url: str) -> pd.DataFrame:
             raise
 
 
-def main() -> None:
+def main():
     st.set_page_config(page_title="Dealer Group Dealership Scraper", layout="centered")
     st.image("trackhawk_logo.png", width=200)
     st.title("Dealer Group Dealership Scraper")

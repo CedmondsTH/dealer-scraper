@@ -1,4 +1,4 @@
-# 🚗 Dealership Data Scraper
+# 🚗 Professional Dealership Data Scraper
 
 **Enterprise-grade automotive dealership data extraction platform** that automatically extracts and standardizes dealership information from any automotive group website using intelligent pattern recognition and AI-powered fallback capabilities.
 
@@ -10,16 +10,17 @@
 ## 🎯 **Key Features**
 
 - **🤖 AI-Powered Extraction**: Gemini AI fallback for unlimited website support
-- **📊 Multi-Format Export**: Excel, CSV, and JSON output formats
+- **📊 Multi-Format Export**: Excel, CSV, and JSON output formats  
 - **☁️ Cloud-Ready**: Docker containerized with Railway deployment
 - **🎯 Smart Recognition**: 12+ pre-built dealership group patterns
 - **🔍 Intelligent Parsing**: Advanced address and contact information extraction
 - **📈 Real-Time Processing**: Live progress tracking and status updates
 - **🔒 Enterprise Security**: Environment-based configuration management
+- **🏗️ Professional Architecture**: Modular, maintainable, and extensible codebase
 
 ## 🏢 **Supported Dealership Groups**
 
-Currently supports **12+ major automotive groups** with intelligent fallback for any website:
+Currently supports **12+ major automotive groups** with intelligent AI fallback for any website:
 
 - ✅ **Lithia Motors** (309+ locations)
 - ✅ **Group 1 Automotive** 
@@ -59,7 +60,7 @@ Currently supports **12+ major automotive groups** with intelligent fallback for
 3. **Configure environment**
    ```bash
    cp .env.example .env
-   # Edit .env with your API key
+   # Edit .env with your GEMINI_API_KEY
    ```
 
 4. **Run the application**
@@ -69,7 +70,7 @@ Currently supports **12+ major automotive groups** with intelligent fallback for
 
 ## 🖥️ **Usage**
 
-### Web Interface
+### Web Interface (Recommended)
 
 1. Open the Streamlit app in your browser
 2. Enter the **Dealer Group Name** (e.g., "Lithia Motors")
@@ -101,40 +102,77 @@ The scraper extracts and standardizes the following information:
 | **Country** | Country classification | "United States of America" |
 | **Website** | Dealership website URL | "bmwseattle.com" |
 
-## 🏗️ **Architecture**
+## 🏗️ **Professional Architecture**
 
+### Project Structure
+```
+dealer-scraper/
+├── app.py                      # Main application entry point
+├── config/                     # Configuration management
+│   ├── __init__.py
+│   └── settings.py            # Environment & constants
+├── models/                     # Data models & validation
+│   ├── __init__.py
+│   └── dealership.py          # Dealership data structures
+├── scrapers/                   # Extraction strategies
+│   ├── __init__.py
+│   ├── base.py                # Base scraper interface
+│   ├── lithia.py              # Lithia Motors scraper
+│   ├── group1.py              # Group 1 Automotive scraper
+│   └── ai_fallback.py         # AI-powered fallback
+├── utils/                      # Utility modules
+│   ├── __init__.py
+│   ├── browser.py             # Browser automation
+│   ├── logging.py             # Structured logging
+│   └── parsers.py             # Data parsing utilities
+├── ui/                         # User interfaces
+│   ├── __init__.py
+│   └── streamlit_app.py       # Streamlit web interface
+├── requirements.txt            # Python dependencies
+├── Dockerfile                  # Container configuration
+├── railway.json               # Railway deployment config
+├── .env.example               # Environment template
+└── README.md                  # This documentation
+```
+
+### Architecture Diagram
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │    │  Pattern Engine │    │   AI Fallback   │
-│                 │────│                 │────│                 │
-│ • Input Forms   │    │ • 12+ Patterns  │    │ • Gemini 1.5    │
-│ • Progress Bar  │    │ • HTML Parsing  │    │ • Smart Analysis│
-│ • Export Tools  │    │ • Data Cleaning │    │ • JSON Output   │
+│   Streamlit UI  │    │  Scraper        │    │   AI Fallback   │
+│                 │────│  Manager        │────│                 │
+│ • Input Forms   │    │                 │    │ • Gemini 1.5    │
+│ • Progress Bar  │    │ • Pattern Match │    │ • Smart Analysis│
+│ • Export Tools  │    │ • Data Pipeline │    │ • JSON Output   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  │
                     ┌─────────────────┐
-                    │  Playwright     │
-                    │                 │
-                    │ • Headless      │
-                    │ • JS Rendering  │
+                    │  Browser        │
+                    │  Manager        │
+                    │ • Playwright    │
+                    │ • Multi-page    │
                     │ • Stealth Mode  │
                     └─────────────────┘
 ```
 
 ## 🔧 **Configuration**
 
-Key environment variables:
+Key environment variables in `.env`:
 
 ```bash
 # Required
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Optional
-LOG_LEVEL=INFO                    # DEBUG, INFO, WARNING, ERROR
-MAX_DEALERSHIPS=1000             # Maximum extractions per site
-PLAYWRIGHT_TIMEOUT=60000         # Browser timeout in milliseconds
+# Optional Performance Tuning
+PLAYWRIGHT_TIMEOUT=60000         # Browser timeout (ms)
+MAX_DEALERSHIPS=1000            # Max extractions per site
+SCROLL_DELAY=1500               # Scroll delay (ms)
+BROWSER_HEADLESS=True           # Headless browser mode
+
+# Optional Application Settings
+LOG_LEVEL=INFO                  # DEBUG, INFO, WARNING, ERROR
+DEBUG_MODE=False                # Enable debug features
 ```
 
 ## 🚀 **Deployment**
@@ -142,7 +180,7 @@ PLAYWRIGHT_TIMEOUT=60000         # Browser timeout in milliseconds
 ### Railway (Recommended)
 
 1. Connect your GitHub repository to Railway
-2. Set environment variables in Railway dashboard
+2. Set `GEMINI_API_KEY` in Railway environment variables
 3. Deploy automatically on push to main branch
 
 ### Docker
@@ -152,7 +190,20 @@ docker build -t dealer-scraper .
 docker run -p 8080:8080 --env-file .env dealer-scraper
 ```
 
-## 📈 **Performance**
+### Local Development
+
+```bash
+# Install in development mode
+pip install -e .
+
+# Run tests (if available)
+python -m pytest
+
+# Run with debug logging
+LOG_LEVEL=DEBUG streamlit run app.py
+```
+
+## 📈 **Performance Metrics**
 
 | Metric | Performance |
 |--------|-------------|
@@ -164,30 +215,47 @@ docker run -p 8080:8080 --env-file .env dealer-scraper
 
 ## 🔍 **How It Works**
 
-1. **Pattern Matching**: Tries 12+ pre-built extraction patterns
-2. **AI Fallback**: If no patterns match, uses Gemini AI for intelligent extraction
-3. **Data Cleaning**: Standardizes addresses, phone numbers, and names
-4. **Validation**: Filters out invalid or duplicate entries
+1. **Pattern Matching**: Tries specialized extraction patterns for known dealer groups
+2. **AI Fallback**: Uses Gemini AI for intelligent extraction when patterns fail
+3. **Data Validation**: Validates and standardizes extracted information
+4. **Deduplication**: Removes duplicate entries based on name and address
 5. **Export**: Formats data for business use (Excel, CSV, JSON)
 
 ## 🛠️ **Development**
 
-### Project Structure
-```
-dealer-scraper/
-├── app.py                 # Main application
-├── requirements.txt       # Dependencies
-├── Dockerfile            # Container configuration
-├── railway.json          # Deployment configuration
-├── .env.example          # Environment template
-└── README.md            # This file
-```
-
 ### Adding New Dealership Patterns
 
-1. Add extraction logic to `extract_dealer_data()` function
-2. Test with sample HTML
-3. Update supported groups list in README
+1. Create new scraper in `scrapers/` directory:
+   ```python
+   from scrapers.base import BaseScraper
+   
+   class NewDealerScraper(BaseScraper):
+       def can_handle(self, html: str, url: str) -> bool:
+           return "new-dealer" in url.lower()
+       
+       def extract(self, html: str, url: str) -> List[DealershipData]:
+           # Implementation here
+           pass
+   ```
+
+2. Register in `scrapers/__init__.py`:
+   ```python
+   from scrapers.new_dealer import NewDealerScraper
+   
+   self.scrapers = [
+       NewDealerScraper(),  # Add here
+       # ... existing scrapers
+   ]
+   ```
+
+### Code Quality Standards
+
+- **Type Hints**: All functions use proper type annotations
+- **Documentation**: Comprehensive docstrings and comments
+- **Error Handling**: Robust exception handling throughout
+- **Logging**: Structured logging for debugging and monitoring
+- **Modularity**: Clean separation of concerns
+- **Testing**: Unit tests for critical functionality (recommended)
 
 ## 📝 **License**
 
@@ -195,8 +263,10 @@ dealer-scraper/
 
 ## 🤝 **Support**
 
-For technical support or feature requests, contact the development team.
+For technical support, feature requests, or custom development:
+- Create an issue in the GitHub repository
+- Contact the development team for enterprise support
 
 ---
 
-**Built with ❤️ by Trackhawk Advisors** | **Powered by Gemini AI** | **Deployed on Railway** 
+**Built with ❤️ by Trackhawk Advisors** | **Powered by Gemini AI** | **Deployed on Railway**

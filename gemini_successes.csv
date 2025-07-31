@@ -1,19 +1,5 @@
 timestamp,dealer_group,url,dealers_found,html_snippet
-2025-07-30T11:35:15.998196,Test Dealer Group,https://test.com,2,"
-<html>
-<body>
-<div class=""dealership-location"">
-<h3>Sample Ford Dealership</h3>
-<p>123 Main Street<br/>Anytown, TX 12345</p>
-<p>Phone: (555) 123-4567</p>
-<a href=""https://www.sampleford.com"">Visit Website</a>
-</div>
-<div class=""dealership-location"">
-<h3>Another Car Lot</h3>
-<p>456 Oak Ave<br/>Different City, CA 98765</p>
-<p>Phone: (555) 987-6543</p>
-<a href=""https://www.anothercars.com"">Learn More</a>
-</div>
-</body>
-</html>
-"
+2025-07-31T17:32:19.169031,Edwardsautogroup,https://www.edwardsautogroup.com/contact-us/,1,"<!DOCTYPE html>
+<html class=""wf-montserrat-n7-active wf-montserrat-n3-active wf-montserrat-n9-active wf-montserrat-n4-active wf-opensans-n4-active wf-opensans-n7-active wf-active"" lang=""en""><!--<![endif]--><head><meta content=""A7vZI3v+Gz7JfuRolKNM4Aff6zaGuT7X0mf3wtoZTnKv6497cVMnhy03KDqX7kBz/q/iidW7srW31oQbBt4VhgoAAACUeyJvcmlnaW4iOiJodHRwczovL3d3dy5nb29nbGUuY29tOjQ0MyIsImZlYXR1cmUiOiJEaXNhYmxlVGhpcmRQYXJ0eVN0b3JhZ2VQYXJ0aXRpb25pbmczIiwiZXhwaXJ5IjoxNzU3OTgwODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZ..."
+2025-07-31T17:34:21.888400,Edwardsautogroup,https://www.edwardsautogroup.com/contact-us,1,"<!DOCTYPE html>
+<html class=""wf-montserrat-n7-active wf-montserrat-n3-active wf-montserrat-n4-active wf-montserrat-n9-active wf-opensans-n7-active wf-opensans-n4-active wf-active"" lang=""en""><!--<![endif]--><head><meta content=""A7vZI3v+Gz7JfuRolKNM4Aff6zaGuT7X0mf3wtoZTnKv6497cVMnhy03KDqX7kBz/q/iidW7srW31oQbBt4VhgoAAACUeyJvcmlnaW4iOiJodHRwczovL3d3dy5nb29nbGUuY29tOjQ0MyIsImZlYXR1cmUiOiJEaXNhYmxlVGhpcmRQYXJ0eVN0b3JhZ2VQYXJ0aXRpb25pbmczIiwiZXhwaXJ5IjoxNzU3OTgwODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZ..."
