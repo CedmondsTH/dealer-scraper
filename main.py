@@ -40,7 +40,9 @@ def main():
         
         try:
             dealerships = scrape_dealerships_cli(dealer_name, url)
-            print(json.dumps(dealerships), flush=True)
+            # Ensure JSON output is flushed immediately and not buffered
+            json_output = json.dumps(dealerships)
+            print(json_output, flush=True)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)

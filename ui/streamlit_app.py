@@ -165,12 +165,14 @@ class StreamlitUI:
                 stderr_output = []
                 while True:
                     line = proc.stderr.readline()
-                    if not line and proc.poll() is not None:
-                        break
-                    if line:
-                        stderr_output.append(line)
-                        status_container.info(f"Status: {line.strip()}")
-                        logger.info(f"Subprocess log: {line.strip()}")
+                    if not line:
+                        if proc.poll() is not None:
+                            break
+                        continue
+                        
+                    stderr_output.append(line)
+                    status_container.info(f"Status: {line.strip()}")
+                    logger.info(f"Subprocess log: {line.strip()}")
                 
                 stdout, _ = proc.communicate()
                 stderr = "".join(stderr_output)
