@@ -1,0 +1,100 @@
+{
+  "www.bakerautogroup.com": [
+    {
+      "host": "www.bakerautogroup.com",
+      "path_pattern": "/",
+      "version": 1,
+      "card_selector": "section, div, li",
+      "fields": {
+        "name": "b, strong, h2, h3",
+        "street": "p, .address, .street",
+        "city_state_zip": ".address, p",
+        "phone": "a[href^='tel:'], .phone",
+        "website": "a[href^='http']"
+      },
+      "dom_signature": "",
+      "success_count": 0
+    }
+  ],
+  "*pattern*": [
+    {
+      "host": "*pattern*",
+      "path_pattern": "layout:lists:48|phones:multiple",
+      "version": 1,
+      "card_selector": ".location-item, .dealer-location, .store-location, [class*='location'][class*='item'], [class*='dealer'][class*='card'], section:has(.address)",
+      "fields": {
+        "name": "h3, h4, h5, .location-name, .dealer-name, .store-name, strong:first-of-type, b:first-of-type",
+        "street": ".address .street, .location .address, .address-line, [class*='street'], .addr:first-line",
+        "city_state_zip": ".address .city-state-zip, .location .city-state, .address-line:last-of-type, [class*='city-state']",
+        "phone": "a[href^='tel:'], .phone, [class*='phone'], [href*='tel:']",
+        "website": "a[href^='http']:not([href*='directions']):not([href*='maps']), [href*='http']"
+      },
+      "dom_signature": "layout:lists:48|phones:multiple",
+      "success_count": 1
+    },
+    {
+      "host": "*pattern*",
+      "path_pattern": "layout:addresses:multiple|containers:10|lists:67|phones:multiple|states:multiple",
+      "version": 1,
+      "card_selector": ".location-item, .dealer-location, .store-location, [class*='location'][class*='item'], [class*='dealer'][class*='card'], section:has(.address)",
+      "fields": {
+        "name": "h3, h4, h5, .location-name, .dealer-name, .store-name, strong:first-of-type, b:first-of-type",
+        "street": ".address .street, .location .address, .address-line, [class*='street'], .addr:first-line",
+        "city_state_zip": ".address .city-state-zip, .location .city-state, .address-line:last-of-type, [class*='city-state']",
+        "phone": "a[href^='tel:'], .phone, [class*='phone'], [href*='tel:']",
+        "website": "a[href^='http']:not([href*='directions']):not([href*='maps']), [href*='http']"
+      },
+      "dom_signature": "layout:addresses:multiple|containers:10|lists:67|phones:multiple|states:multiple",
+      "success_count": 1
+    },
+    {
+      "host": "*pattern*",
+      "path_pattern": "layout:addresses:multiple|containers:6|lists:372|phones:multiple|states:multiple",
+      "version": 1,
+      "card_selector": ".location-item, .dealer-location, .store-location, [class*='location'][class*='item'], [class*='dealer'][class*='card'], section:has(.address)",
+      "fields": {
+        "name": "h3, h4, h5, .location-name, .dealer-name, .store-name, strong:first-of-type, b:first-of-type",
+        "street": ".address .street, .location .address, .address-line, [class*='street'], .addr:first-line",
+        "city_state_zip": ".address .city-state-zip, .location .city-state, .address-line:last-of-type, [class*='city-state']",
+        "phone": "a[href^='tel:'], .phone, [class*='phone'], [href*='tel:']",
+        "website": "a[href^='http']:not([href*='directions']):not([href*='maps']), [href*='http']"
+      },
+      "dom_signature": "layout:addresses:multiple|containers:6|lists:372|phones:multiple|states:multiple",
+      "success_count": 1
+    }
+  ],
+  "www.bakhtiariauto.com": [
+    {
+      "host": "www.bakhtiariauto.com",
+      "path_pattern": "/locations\\.html",
+      "version": 1,
+      "card_selector": "section, div, li",
+      "fields": {
+        "name": "b, strong, h2, h3",
+        "street": "p, .address, .street",
+        "city_state_zip": ".address, p",
+        "phone": "a[href^='tel:'], .phone",
+        "website": "a[href^='http']"
+      },
+      "dom_signature": "",
+      "success_count": 0
+    }
+  ],
+  "www.billkay.com": [
+    {
+      "host": "www.billkay.com",
+      "path_pattern": "/",
+      "version": 1,
+      "card_selector": "section, div, li",
+      "fields": {
+        "name": "b, strong, h2, h3",
+        "street": "p, .address, .street",
+        "city_state_zip": ".address, p",
+        "phone": "a[href^='tel:'], .phone",
+        "website": "a[href^='http']"
+      },
+      "dom_signature": "",
+      "success_count": 0
+    }
+  ]
+}

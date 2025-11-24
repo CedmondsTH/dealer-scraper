@@ -1,53 +1,44 @@
-# 🚗 Professional Dealership Data Scraper
+# Dealer Location Scraper
 
-**Enterprise-grade automotive dealership data extraction platform** that automatically extracts and standardizes dealership information from any automotive group website using intelligent pattern recognition and AI-powered fallback capabilities.
+A professional-grade web application for extracting dealer location data from automotive dealer websites. Built with a modular architecture supporting multiple dealer site formats and providing clean, validated output.
 
-![Python](https://img.shields.io/badge/python-v3.11+-blue.svg)
-![Streamlit](https://img.shields.io/badge/streamlit-v1.0+-red.svg)
-![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
-![Railway](https://img.shields.io/badge/deploy-railway-purple.svg)
+## 🚀 Features
 
-## 🎯 **Key Features**
+- **Multi-Strategy Scraping**: Automatically detects and handles 6+ different dealer website formats
+- **Clean Data Output**: Validates addresses, removes duplicates, normalizes data
+- **Multiple Export Formats**: Excel, CSV, and JSON output options
+- **Professional Web Interface**: User-friendly Streamlit interface
+- **Enterprise Architecture**: Modular, testable, and maintainable codebase
 
-- **🤖 AI-Powered Extraction**: Gemini AI fallback for unlimited website support
-- **📊 Multi-Format Export**: Excel, CSV, and JSON output formats  
-- **☁️ Cloud-Ready**: Docker containerized with Railway deployment
-- **🎯 Smart Recognition**: 12+ pre-built dealership group patterns
-- **🔍 Intelligent Parsing**: Advanced address and contact information extraction
-- **📈 Real-Time Processing**: Live progress tracking and status updates
-- **🔒 Enterprise Security**: Environment-based configuration management
-- **🏗️ Professional Architecture**: Modular, maintainable, and extensible codebase
+## 🏗️ Architecture
 
-## 🏢 **Supported Dealership Groups**
+```
+dealer-scraper/
+├── core/           # Business logic services
+├── scrapers/       # Modular scraping strategies  
+├── ui/            # Web interface
+├── cli/           # Command-line interface
+├── utils/         # Shared utilities
+├── config/        # Configuration management
+└── archive/       # Historical files
+```
 
-Currently supports **12+ major automotive groups** with intelligent AI fallback for any website:
+## 🔧 Supported Dealer Sites
 
-- ✅ **Lithia Motors** (309+ locations)
-- ✅ **Group 1 Automotive** 
-- ✅ **AutoCanada**
-- ✅ **Edwards Auto Group** (21+ locations)
-- ✅ **HGreg Auto**
-- ✅ **Ken Ganley Automotive**
-- ✅ **Ken Garff Automotive**
-- ✅ **Open Road Auto Group**
-- ✅ **Sierra Auto Group**
-- ✅ **Pritchard Family Auto Stores**
-- ✅ **Gregory Auto Group**
-- ✅ **All American Auto Group**
-- 🤖 **Any Website** (via AI fallback)
+- **Lithia Motors** - Complete dealer network
+- **Group 1 Automotive** - Multi-brand locations
+- **AutoCanada** - Canadian dealer network
+- **JSON-LD Sites** - Standards-compliant structured data
+- **JavaScript-Based Sites** - Dynamic content extraction
+- **Generic Sites** - HGreg, Ken Ganley, Sierra Auto, and 9+ other formats
 
-## 🚀 **Quick Start**
+## 🚀 Quick Start
 
-### Prerequisites
-
-- Python 3.11+
-- Google Gemini API key ([Get yours here](https://ai.google.dev/))
-
-### Installation
+### Local Development
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/dealer-scraper.git
+   git clone <repository-url>
    cd dealer-scraper
    ```
 
@@ -57,216 +48,193 @@ Currently supports **12+ major automotive groups** with intelligent AI fallback 
    playwright install chromium
    ```
 
-3. **Configure environment**
+3. **Run the web interface**
    ```bash
-   cp .env.example .env
-   # Edit .env with your GEMINI_API_KEY
+   python main.py
    ```
 
-4. **Run the application**
+4. **Or use the command line**
    ```bash
-   streamlit run app.py
+   python main.py scrape "Dealer Name" "https://dealer-website.com/locations"
    ```
 
-## 🖥️ **Usage**
+### Railway Deployment
 
-### Web Interface (Recommended)
+The application is configured for one-click Railway deployment:
 
-1. Open the Streamlit app in your browser
-2. Enter the **Dealer Group Name** (e.g., "Lithia Motors")
-3. Provide the **Locations Page URL** 
-4. Click **"Extract Dealerships"**
-5. Download results in Excel or CSV format
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/your-template)
+
+## 💻 Usage
+
+### Web Interface
+
+1. Visit the deployed application
+2. Enter the dealer group name (e.g., "Lithia Motors")
+3. Paste the dealer locations page URL
+4. Click "Extract Dealerships"
+5. Download the Excel or CSV file
 
 ### Command Line Interface
 
 ```bash
-python app.py "Dealer Group Name" "https://dealer-website.com/locations"
+# Extract dealer data
+python main.py scrape "Lithia Motors" "https://lithia.com/locations"
+
+# List available scraping strategies
+python main.py list-strategies
+
+# Get help
+python main.py --help
 ```
 
-## 📊 **Data Output**
-
-The scraper extracts and standardizes the following information:
-
-| Field | Description | Example |
-|-------|-------------|---------|
-| **Dealership** | Full dealership name | "BMW of Downtown Seattle" |
-| **Dealer Group** | Parent company | "Lithia Motors" |
-| **Dealership Type** | Category classification | "Franchised", "Used", "Collision" |
-| **Car Brand** | Automotive brands sold | "BMW", "CDJR", "Toyota" |
-| **Address** | Standardized street address | "123 Main St" |
-| **City** | City name | "Seattle" |
-| **State/Province** | State or province code | "WA", "ON" |
-| **Postal Code** | ZIP or postal code | "98101", "M5V 3A8" |
-| **Phone** | Contact phone number | "(206) 555-0123" |
-| **Country** | Country classification | "United States of America" |
-| **Website** | Dealership website URL | "bmwseattle.com" |
-
-## 🏗️ **Professional Architecture**
-
-### Project Structure
-```
-dealer-scraper/
-├── app.py                      # Main application entry point
-├── config/                     # Configuration management
-│   ├── __init__.py
-│   └── settings.py            # Environment & constants
-├── models/                     # Data models & validation
-│   ├── __init__.py
-│   └── dealership.py          # Dealership data structures
-├── scrapers/                   # Extraction strategies
-│   ├── __init__.py
-│   ├── base.py                # Base scraper interface
-│   ├── lithia.py              # Lithia Motors scraper
-│   ├── group1.py              # Group 1 Automotive scraper
-│   └── ai_fallback.py         # AI-powered fallback
-├── utils/                      # Utility modules
-│   ├── __init__.py
-│   ├── browser.py             # Browser automation
-│   ├── logging.py             # Structured logging
-│   └── parsers.py             # Data parsing utilities
-├── ui/                         # User interfaces
-│   ├── __init__.py
-│   └── streamlit_app.py       # Streamlit web interface
-├── requirements.txt            # Python dependencies
-├── Dockerfile                  # Container configuration
-├── railway.json               # Railway deployment config
-├── .env.example               # Environment template
-└── README.md                  # This documentation
-```
-
-### Architecture Diagram
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │    │  Scraper        │    │   AI Fallback   │
-│                 │────│  Manager        │────│                 │
-│ • Input Forms   │    │                 │    │ • Gemini 1.5    │
-│ • Progress Bar  │    │ • Pattern Match │    │ • Smart Analysis│
-│ • Export Tools  │    │ • Data Pipeline │    │ • JSON Output   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │  Browser        │
-                    │  Manager        │
-                    │ • Playwright    │
-                    │ • Multi-page    │
-                    │ • Stealth Mode  │
-                    └─────────────────┘
-```
-
-## 🔧 **Configuration**
-
-Key environment variables in `.env`:
+### Legacy Compatibility
 
 ```bash
-# Required
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Optional Performance Tuning
-PLAYWRIGHT_TIMEOUT=60000         # Browser timeout (ms)
-MAX_DEALERSHIPS=1000            # Max extractions per site
-SCROLL_DELAY=1500               # Scroll delay (ms)
-BROWSER_HEADLESS=True           # Headless browser mode
-
-# Optional Application Settings
-LOG_LEVEL=INFO                  # DEBUG, INFO, WARNING, ERROR
-DEBUG_MODE=False                # Enable debug features
+# Old format still supported
+python app.py "Dealer Name" "https://dealer-url.com"
 ```
 
-## 🚀 **Deployment**
+## 🔧 Configuration
 
-### Railway (Recommended)
-
-1. Connect your GitHub repository to Railway
-2. Set `GEMINI_API_KEY` in Railway environment variables
-3. Deploy automatically on push to main branch
-
-### Docker
+Configure the application via environment variables:
 
 ```bash
-docker build -t dealer-scraper .
-docker run -p 8080:8080 --env-file .env dealer-scraper
+# Scraping settings
+SCRAPING_TIMEOUT=60000
+SCRAPING_HEADLESS=true
+SCRAPING_VIEWPORT_WIDTH=1920
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE_PATH=logs/app.log
+
+# UI settings
+UI_PAGE_TITLE="Dealer Location Scraper"
+UI_CACHE_ENABLED=true
 ```
 
-### Local Development
+## 🏛️ Professional Architecture
+
+### Core Services
+
+- **ScraperService**: Main orchestrator coordinating all operations
+- **DataService**: Data processing, validation, and export functionality
+- **WebScraper**: Browser automation with Playwright
+
+### Strategy Pattern
+
+Each dealer site type has its own specialized parser:
+
+```python
+from scrapers.strategies.lithia_strategy import LithiaStrategy
+from scrapers.strategies.json_ld_strategy import JsonLdStrategy
+
+# Strategies are automatically registered and used
+```
+
+### Utilities
+
+- **AddressParser**: Converts full addresses into components
+- **DataCleaner**: Validates, normalizes, and deduplicates data
+
+## 🧪 Development
+
+### Adding New Dealer Sites
+
+1. Create a new strategy in `scrapers/strategies/`
+2. Inherit from `ScraperStrategy` base class
+3. Implement `can_handle()` and `extract_dealers()` methods
+4. Register in `strategy_manager.py`
+
+Example:
+
+```python
+class NewDealerStrategy(ScraperStrategy):
+    @property
+    def strategy_name(self) -> str:
+        return "New Dealer Site"
+    
+    def can_handle(self, html: str, page_url: str) -> bool:
+        # Detection logic
+        return "new-dealer-indicator" in html
+    
+    def extract_dealers(self, html: str, page_url: str) -> List[Dict]:
+        # Extraction logic
+        pass
+```
+
+### Testing
 
 ```bash
-# Install in development mode
-pip install -e .
+# Test specific dealer site
+python main.py scrape "Test Dealer" "https://example.com" --debug
 
-# Run tests (if available)
-python -m pytest
-
-# Run with debug logging
-LOG_LEVEL=DEBUG streamlit run app.py
+# List available strategies
+python main.py list-strategies
 ```
 
-## 📈 **Performance Metrics**
+## 📊 Data Output
 
-| Metric | Performance |
-|--------|-------------|
-| **Extraction Speed** | ~50-100 dealerships/minute |
-| **Success Rate** | 95%+ with AI fallback |
-| **Supported Sites** | Unlimited (AI-powered) |
-| **Data Accuracy** | 98%+ for structured sites |
-| **Uptime** | 99.9% (Railway deployment) |
+### Excel/CSV Columns
 
-## 🔍 **How It Works**
+- **Dealership**: Dealer name
+- **Dealer Group**: Parent company
+- **Dealership Type**: Franchised, Used, Collision, Fixed Ops
+- **Car Brand**: Detected automotive brands
+- **Address**: Street address (normalized)
+- **City**: City name
+- **State/Province**: State or province code
+- **Postal Code**: ZIP or postal code
+- **Phone**: Contact phone number
+- **Country**: United States of America or Canada
+- **Website**: Dealer website URL
 
-1. **Pattern Matching**: Tries specialized extraction patterns for known dealer groups
-2. **AI Fallback**: Uses Gemini AI for intelligent extraction when patterns fail
-3. **Data Validation**: Validates and standardizes extracted information
-4. **Deduplication**: Removes duplicate entries based on name and address
-5. **Export**: Formats data for business use (Excel, CSV, JSON)
+### Data Quality
 
-## 🛠️ **Development**
+- **Address Normalization**: Standardizes abbreviations (Street→St, Avenue→Ave)
+- **Duplicate Removal**: Based on normalized name and address
+- **Phone Validation**: Extracts and formats phone numbers
+- **Brand Detection**: Identifies automotive brands from dealer names
 
-### Adding New Dealership Patterns
+## 🔒 Security & Privacy
 
-1. Create new scraper in `scrapers/` directory:
-   ```python
-   from scrapers.base import BaseScraper
-   
-   class NewDealerScraper(BaseScraper):
-       def can_handle(self, html: str, url: str) -> bool:
-           return "new-dealer" in url.lower()
-       
-       def extract(self, html: str, url: str) -> List[DealershipData]:
-           # Implementation here
-           pass
-   ```
+- **No data storage**: Scraped data is not stored on servers
+- **Browser isolation**: Each scraping session uses fresh browser instance
+- **Rate limiting**: Respectful scraping with appropriate delays
+- **Error handling**: Graceful failure without exposing sensitive information
 
-2. Register in `scrapers/__init__.py`:
-   ```python
-   from scrapers.new_dealer import NewDealerScraper
-   
-   self.scrapers = [
-       NewDealerScraper(),  # Add here
-       # ... existing scrapers
-   ]
-   ```
+## 📈 Performance
 
-### Code Quality Standards
+- **Parallel processing**: Multiple extraction strategies run concurrently
+- **Caching**: Web interface caches results to avoid re-scraping
+- **Browser optimization**: Headless mode with performance optimizations
+- **Memory management**: Automatic cleanup of browser resources
 
-- **Type Hints**: All functions use proper type annotations
-- **Documentation**: Comprehensive docstrings and comments
-- **Error Handling**: Robust exception handling throughout
-- **Logging**: Structured logging for debugging and monitoring
-- **Modularity**: Clean separation of concerns
-- **Testing**: Unit tests for critical functionality (recommended)
+## 🤝 Contributing
 
-## 📝 **License**
+1. Fork the repository
+2. Create a feature branch
+3. Add your changes with tests
+4. Submit a pull request
 
-© 2025 Trackhawk Advisors. All rights reserved.
+## 📄 License
 
-## 🤝 **Support**
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-For technical support, feature requests, or custom development:
-- Create an issue in the GitHub repository
-- Contact the development team for enterprise support
+## 🆘 Support
 
----
+For issues and questions:
+- Check existing GitHub issues
+- Create a new issue with reproduction steps
+- Include debug logs when reporting problems
 
-**Built with ❤️ by Trackhawk Advisors** | **Powered by Gemini AI** | **Deployed on Railway**
+## 🏆 Professional Standards
+
+This codebase follows enterprise development standards:
+- **Clean Architecture** with separation of concerns
+- **SOLID Principles** throughout the design
+- **Strategy Pattern** for extensible scraping
+- **Service Layer** for testable business logic
+- **Configuration Management** for environment-specific settings
+- **Professional Logging** with structured output
+- **Type Safety** with comprehensive type hints
