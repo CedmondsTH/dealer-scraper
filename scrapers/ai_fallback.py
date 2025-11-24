@@ -33,7 +33,8 @@ class AIFallbackScraper(BaseScraper):
         
         try:
             genai.configure(api_key=config.GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-1.5-flash-8b')
+            # Use gemini-1.5-flash model (removed -8b suffix which might be invalid/deprecated)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
         except Exception as e:
             logger.error(f"Failed to configure Gemini AI: {e}")
             self.model = None
