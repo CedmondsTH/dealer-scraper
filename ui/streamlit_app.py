@@ -156,16 +156,24 @@ class StreamlitUI:
                     cmd, 
                     stdout=subprocess.PIPE, 
                     stderr=subprocess.PIPE, 
-                    text=True
+                    text=True,
+                    encoding='utf-8',
+                    bufsize=1
                 )
                 
-                stdout, stderr = proc.communicate()
+                # Read stderr line by line for progress
+                stderr_output = []
+                while True:
+                    line = proc.stderr.readline()
+                    if not line and proc.poll() is not None:
+                        break
+                    if line:
+                        stderr_output.append(line)
+                        status_container.info(f"Status: {line.strip()}")
+                        logger.info(f"Subprocess log: {line.strip()}")
                 
-                # Show status updates
-                if stderr:
-                    error_lines = stderr.splitlines()
-                    if error_lines:
-                        status_container.info(f"Status: {error_lines[-1]}")
+                stdout, _ = proc.communicate()
+                stderr = "".join(stderr_output)
                 
                 if proc.returncode != 0:
                     st.error("❌ Extraction failed. See details below.")
