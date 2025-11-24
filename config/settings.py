@@ -38,8 +38,8 @@ class Config:
     @classmethod
     def validate(cls) -> bool:
         """Validate that required configuration is present."""
-        if not cls.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
+        # GEMINI_API_KEY is now optional for app startup
+        # Individual components will check for it when needed
         return True
 
 

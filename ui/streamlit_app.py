@@ -89,11 +89,18 @@ class StreamlitUI:
                     help="Maximum number of dealerships to extract"
                 )
             with col2:
+                # Check if API key is available
+                has_api_key = bool(config.GEMINI_API_KEY)
+                
                 use_ai_fallback = st.checkbox(
                     "Enable AI Fallback", 
-                    value=True,
-                    help="Use AI when standard patterns don't work"
+                    value=has_api_key,
+                    disabled=not has_api_key,
+                    help="Use AI when standard patterns don't work" if has_api_key else "GEMINI_API_KEY required for AI fallback"
                 )
+                
+                if not has_api_key:
+                    st.caption("⚠️ GEMINI_API_KEY not set")
         
         return dealer_name, url, max_dealerships, use_ai_fallback
     

@@ -27,14 +27,20 @@ class AIFallbackScraper(BaseScraper):
     def _configure_ai(self):
         """Configure Google Gemini AI."""
         if not config.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY is required for AI fallback")
+            logger.warning("GEMINI_API_KEY not found. AI fallback will be disabled.")
+            self.model = None
+            return
         
-        genai.configure(api_key=config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-1.5-flash-8b')
-    
+        try:
+            genai.configure(api_key=config.GEMINI_API_KEY)
+            self.model = genai.GenerativeModel('gemini-1.5-flash-8b')
+        except Exception as e:
+            logger.error(f"Failed to configure Gemini AI: {e}")
+            self.model = None
+
     def can_handle(self, html: str, url: str) -> bool:
-        """AI fallback can handle any website."""
-        return True
+        """AI fallback can handle any website if AI is configured."""
+        return self.model is not None
     
     def extract(self, html: str, url: str) -> List[DealershipData]:
         """Extract dealership data using AI analysis."""
