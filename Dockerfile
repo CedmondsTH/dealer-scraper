@@ -3,49 +3,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies required for Playwright
+# Install basic system dependencies
 RUN apt-get update && \
     apt-get install -y \
-    curl \
-    unzip \
     wget \
     gnupg \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxcb1 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libatspi2.0-0 \
-    libgtk-3-0 \
-    libgdk-pixbuf2.0-0 \
-    libxss1 \
-    libgconf-2-4 \
-    libexpat1 \
-    libxshmfence1 \
-    libx11-xcb1 \
-    libxcb-dri3-0 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy application files
 COPY . .
 
+# Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    playwright install chromium && \
-    playwright install-deps chromium
+    pip install -r requirements.txt
 
+# Install Playwright and its dependencies (this handles all browser deps automatically)
+RUN playwright install --with-deps chromium
+
+# Expose port
 EXPOSE 8080
 
+# Start Streamlit
 CMD ["streamlit", "run", "app.py", "--server.port=8080", "--server.enableCORS=false", "--server.address=0.0.0.0"]
