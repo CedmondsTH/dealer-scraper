@@ -267,11 +267,22 @@ HTML sample:
         soup = BeautifulSoup(html, 'html.parser')
         
         # Remove noise elements
-        for tag in soup(['script', 'style', 'nav', 'header', 'footer']):
+        for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'iframe']):
             tag.decompose()
         
-        # Get cleaned HTML and truncate to stay within token limits
-        clean_html = str(soup)[:15000]
+        # Try to find main content area
+        main_content = None
+        for selector in ['main', '[role="main"]', '#main', '.main-content', 
+                        '#content', '.content', 'article', '.container']:
+            main_content = soup.select_one(selector)
+            if main_content and len(str(main_content)) > 2000:
+                soup = BeautifulSoup(str(main_content), 'html.parser')
+                logger.debug(f"Found main content with selector: {selector}")
+                break
+        
+        # Get larger sample for better extraction - 30K chars
+        clean_html = str(soup)[:30000]
+        logger.debug(f"Prepared {len(clean_html)} chars of HTML for AI extraction")
         return clean_html
     
     def _create_extraction_prompt(self, html: str, url: str) -> str:
@@ -279,18 +290,37 @@ HTML sample:
         dealer_name = self._extract_dealer_name_from_url(url)
         
         return f"""
-Analyze this HTML from {dealer_name}'s website ({url}) and extract dealership location information.
+You are extracting dealership location data from {dealer_name}'s website ({url}).
 
-Extract each dealership/location as a JSON object with these fields:
-- name: Full dealership name
-- street: Street address  
-- city: City name
-- state: State/province (2-letter code if possible)
-- zip: Postal/ZIP code
-- phone: Phone number (clean format)
-- website: Website URL (use provided URL if specific dealership site not found)
+Your task: Find ALL dealership locations on this page and extract their information.
 
-Return ONLY a valid JSON array of dealership objects. No explanation or additional text.
+Look for:
+- Dealership names (could be in headings, links, or bold text)
+- Addresses (street, city, state, ZIP - may be combined or separate)
+- Phone numbers (look for tel: links, phone classes, or phone number patterns)
+- Website URLs (look for "Visit Site", "Website", or dealership-specific links)
+
+IMPORTANT:
+- Extract EVERY dealership you find, even if some fields are missing
+- If address is combined (e.g., "123 Main St, City, ST 12345"), include it in the street field
+- If you can't find a specific field, use empty string ""
+- Look carefully - dealerships might be in cards, lists, tables, or other containers
+- There should be multiple dealerships (10-100+) on this page
+
+Return a JSON array with this structure:
+[
+  {{
+    "name": "Dealership Name",
+    "street": "123 Main Street",
+    "city": "City Name",
+    "state": "ST",
+    "zip": "12345",
+    "phone": "555-555-5555",
+    "website": "https://dealership-url.com"
+  }}
+]
+
+Return ONLY the JSON array. No explanations, no markdown formatting, just the raw JSON array.
 
 HTML content:
 {html}

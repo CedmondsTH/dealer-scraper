@@ -22,7 +22,7 @@ class ScraperManager:
     def __init__(self):
         # Initialize all scrapers in priority order
         self.scrapers = [
-            # Specific dealer group scrapers (fast, reliable)
+            # Specific dealer group scrapers (fast, reliable, free)
             LithiaScraper(),
             Group1Scraper(),
             EdwardsScraper(),  # Edwards Auto Group specific
@@ -30,12 +30,12 @@ class ScraperManager:
             SonicScraper(),  # Sonic Automotive specific
             # Add more specific scrapers here
             
-            # AI-guided smart scraper (learns from page structure)
-            SmartGenericScraper(),  # Uses AI to identify extraction strategy
+            # AI extraction (works on most sites, small cost ~$0.02 per scrape)
+            AIFallbackScraper(),  # Direct AI extraction - reliable for unknown sites
             
-            # Fallback scrapers (last resort)
-            GenericScraper(),  # Basic generic patterns
-            AIFallbackScraper()  # Full AI extraction (slowest, always last)
+            # Pattern-based fallbacks (free but less reliable)
+            SmartGenericScraper(),  # Uses AI to identify extraction strategy
+            GenericScraper(),  # Basic generic patterns (last resort)
         ]
     
     def extract_dealerships(self, html: str, url: str, dealer_name: str = "") -> List:
