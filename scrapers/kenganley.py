@@ -21,78 +21,73 @@ class KenGanleyScraper(BaseScraper):
         soup = self._get_soup(html)
         dealerships = []
         
-        # The structure seems to be lists of items, often with nested generic divs.
-        # Based on the snapshot, dealership info is often in h4 headings and paragraphs
-        # following them within a container.
+        # Use panel-body selector which wraps each dealership card
+        panels = soup.select('div.panel-body')
+        self.logger.info(f"Ken Ganley Scraper: Found {len(panels)} panels")
         
-        # Strategy: Look for headings that look like dealership names, then check siblings/children
-        
-        # Common pattern in the log:
-        # heading "Sarchione Chrysler Dodge Jeep Ram" [level=4]
-        #   paragraph: 315 South Mill Street, Dalton, OH 44618
-        #   ... sales phone ...
-        
-        items = soup.find_all('div', class_=lambda x: x and 'inventory-item' in x) # This is a guess, refining below
-        
-        # Trying a more generic approach based on the text structure observed
-        # Find all h4 tags, as they seem to contain dealer names
-        headings = soup.find_all('h4')
-        
-        for h4 in headings:
-            name = self._extract_text_safely(h4)
-            if not name:
+        for panel in panels:
+            # Name is in h4
+            name_el = panel.find('h4')
+            if not name_el:
                 continue
-                
-            # Initialize data
+            name = self._extract_text_safely(name_el)
+            
+            # Address is in the first paragraph
+            address_el = panel.find('p')
             street = ""
             city = ""
             state = ""
             zip_code = ""
-            phone = ""
-            website = ""
             
-            # Address usually follows in a paragraph
-            address_p = h4.find_next_sibling('p')
-            if address_p:
-                address_text = self._extract_text_safely(address_p)
+            if address_el:
+                full_address = self._extract_text_safely(address_el)
                 # Parse address: "315 South Mill Street, Dalton, OH 44618"
-                if ',' in address_text:
-                    parts = address_text.split(',')
+                if ',' in full_address:
+                    parts = full_address.split(',')
                     if len(parts) >= 2:
                         street = parts[0].strip()
-                        rest = parts[1].strip().split()
-                        if len(rest) >= 3:
-                             # Start from end to get zip, state
-                             zip_code = rest[-1]
-                             state = rest[-2]
-                             city = " ".join(rest[:-2])
-                        elif len(parts) >= 3:
-                             # "Street, City, State Zip"
+                        # Handle the rest
+                        rest = parts[-1].strip().split() # "OH 44618" or "State Zip"
+                        if len(rest) >= 2:
+                            zip_code = rest[-1]
+                            state = rest[-2]
+                        
+                        # City is usually the part before state/zip
+                        if len(parts) == 3:
                              city = parts[1].strip()
-                             state_zip = parts[2].strip().split()
-                             if len(state_zip) >= 2:
-                                 state = state_zip[0]
-                                 zip_code = state_zip[1]
+                        elif len(parts) == 2:
+                             # Street, City State Zip
+                             city_state_zip = parts[1].strip()
+                             # This is harder to split without more logic, but let's try
+                             # removing state and zip from the end
+                             if state and zip_code:
+                                 city = city_state_zip.replace(state, "").replace(zip_code, "").strip()
+                    else:
+                        street = full_address
+                else:
+                    street = full_address
 
-            # Phone usually in a following list or paragraph
-            # Looking for "Sales Phone:" pattern
-            container = h4.parent
-            if container:
-                # Look for phone links or text
-                phone_text = container.find(string=lambda x: x and "Sales Phone:" in x)
-                if phone_text:
-                    phone_parent = phone_text.parent
-                    if phone_parent:
-                         # The number might be in the next sibling or part of the same text node
-                         # In the log: strong: "Sales Phone:", text: (330) 828-2263
-                         # It implies they are siblings in a paragraph
-                         phone = self._extract_text_safely(phone_parent.parent).replace("Sales Phone:", "").strip()
-                
-                # Website
-                # Look for "Visit Our Website" link
-                website_link = container.find('a', string=lambda x: x and "Visit Our Website" in x)
-                if website_link:
-                    website = website_link.get('href', '')
+            # Phone
+            phone = ""
+            # Look for "Sales Phone:" text pattern
+            phone_marker = panel.find(string=lambda x: x and "Sales Phone:" in x)
+            if phone_marker:
+                # Usually in a <p><strong>Sales Phone:</strong><br>Number</p>
+                # text of p would be "Sales Phone:Number"
+                parent = phone_marker.find_parent('p')
+                if parent:
+                    phone = self._extract_text_safely(parent).replace("Sales Phone:", "").strip()
+            
+            # Website
+            website = ""
+            # Look for link with text "Visit Our Website"
+            website_link = panel.find('a', string=lambda x: x and "Visit Our Website" in x)
+            if website_link:
+                website = website_link.get('href', '')
+            
+            # Fallback website if not found
+            if not website and url:
+                website = url
 
             if name and street:
                 dealership = DealershipData(
@@ -106,5 +101,6 @@ class KenGanleyScraper(BaseScraper):
                 )
                 dealerships.append(dealership)
                 
+        self.logger.info(f"Ken Ganley Scraper: Extracted {len(dealerships)} dealerships")
         return dealerships
 
