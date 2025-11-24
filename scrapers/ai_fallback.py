@@ -311,7 +311,7 @@ CRITICAL INSTRUCTIONS:
 - Don't stop after finding a few - keep looking through the entire HTML
 - Include dealerships even if they only have a name and no other info
 
-Return a JSON array with this structure:
+Return a JSON array with this EXACT structure:
 [
   {{
     "name": "Dealership Name",
@@ -324,7 +324,15 @@ Return a JSON array with this structure:
   }}
 ]
 
-Return ONLY the JSON array. No explanations, no markdown formatting, just the raw JSON array.
+CRITICAL JSON FORMATTING RULES:
+- Return ONLY valid JSON - no explanations before or after
+- Escape all quotes in strings properly
+- Close all brackets and braces
+- Use empty string "" for missing fields, never null or undefined
+- Keep dealership names and addresses simple - avoid special characters if possible
+- If you're having trouble with a dealership's data, skip it rather than break the JSON
+
+Return ONLY the JSON array. Test that your JSON is valid before returning it.
 
 HTML content:
 {html}
@@ -338,7 +346,8 @@ HTML content:
         elif response_text.startswith('```'):
             response_text = response_text[3:-3]
         
-        self.logger.debug(f"AI response: {response_text[:200]}...")
+        response_text = response_text.strip()
+        self.logger.debug(f"AI response length: {len(response_text)} chars")
         
         try:
             # Parse JSON response
@@ -351,13 +360,43 @@ HTML content:
             dealerships = []
             for data in dealers_data:
                 if isinstance(data, dict):
-                    dealership = DealershipData.from_dict(data, page_url=url)
-                    dealerships.append(dealership)
+                    try:
+                        dealership = DealershipData.from_dict(data, page_url=url)
+                        dealerships.append(dealership)
+                    except Exception as e:
+                        self.logger.warning(f"Failed to convert dealership data: {e}")
+                        continue
             
             return dealerships
             
         except json.JSONDecodeError as e:
             self.logger.error(f"Failed to parse AI response as JSON: {e}")
+            self.logger.debug(f"Response snippet: {response_text[:500]}...")
+            
+            # Try to salvage partial data by finding valid JSON objects
+            try:
+                # Look for array start and try to find where it breaks
+                if response_text.startswith('['):
+                    # Try to find the last complete object
+                    last_brace = response_text.rfind('}')
+                    if last_brace > 0:
+                        # Try parsing up to the last complete object
+                        truncated = response_text[:last_brace+1] + ']'
+                        dealers_data = json.loads(truncated)
+                        self.logger.info(f"Salvaged {len(dealers_data)} dealerships from partial JSON")
+                        
+                        dealerships = []
+                        for data in dealers_data:
+                            if isinstance(data, dict):
+                                try:
+                                    dealership = DealershipData.from_dict(data, page_url=url)
+                                    dealerships.append(dealership)
+                                except:
+                                    continue
+                        return dealerships
+            except:
+                pass
+            
             return []
     
     def _extract_dealer_name_from_url(self, url: str) -> str:
