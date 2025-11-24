@@ -145,8 +145,15 @@ class StreamlitUI:
             return st.session_state.scrape_cache[cache_key]
         
         try:
-            # Run CLI version in subprocess
-            cmd = [sys.executable, "main.py", dealer_name, url]
+            # Create a temporary file for output
+            import tempfile
+            import os
+            
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
+                output_path = temp_file.name
+            
+            # Run CLI version in subprocess with output file argument
+            cmd = [sys.executable, "main.py", dealer_name, url, output_path]
             
             with st.spinner("🔍 Extracting dealership data..."):
                 # Progress tracking
@@ -181,10 +188,23 @@ class StreamlitUI:
                 if proc.returncode != 0:
                     st.error("❌ Extraction failed. See details below.")
                     st.text(stderr)
+                    if os.path.exists(output_path):
+                        os.unlink(output_path)
                     raise RuntimeError("Scraping subprocess failed")
                 
-                # Parse results
-                rows = json.loads(stdout or "[]")
+                # Read results from file
+                try:
+                    with open(output_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        if not content.strip():
+                            rows = []
+                        else:
+                            rows = json.loads(content)
+                finally:
+                    # Clean up temp file
+                    if os.path.exists(output_path):
+                        os.unlink(output_path)
+                
                 df = self._process_dataframe(rows, dealer_name)
                 
                 # Cache results

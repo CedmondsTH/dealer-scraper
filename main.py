@@ -32,17 +32,25 @@ def main():
     """Main application entry point."""
     if len(sys.argv) > 1:
         # CLI mode
-        if len(sys.argv) != 3:
-            print("Usage: python main.py \"Dealer Name\" \"URL\"", file=sys.stderr)
+        if len(sys.argv) < 3:
+            print("Usage: python main.py \"Dealer Name\" \"URL\" [output_file]", file=sys.stderr)
             sys.exit(1)
         
-        dealer_name, url = sys.argv[1], sys.argv[2]
+        dealer_name = sys.argv[1]
+        url = sys.argv[2]
+        output_file = sys.argv[3] if len(sys.argv) > 3 else None
         
         try:
             dealerships = scrape_dealerships_cli(dealer_name, url)
-            # Ensure JSON output is flushed immediately and not buffered
             json_output = json.dumps(dealerships)
-            print(json_output, flush=True)
+            
+            if output_file:
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(json_output)
+            else:
+                # Ensure JSON output is flushed immediately and not buffered
+                print(json_output, flush=True)
+                
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
