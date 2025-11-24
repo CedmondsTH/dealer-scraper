@@ -280,8 +280,9 @@ HTML sample:
                 logger.debug(f"Found main content with selector: {selector}")
                 break
         
-        # Get larger sample for better extraction - 30K chars
-        clean_html = str(soup)[:30000]
+        # Get much larger sample for better extraction - 100K chars
+        # Modern AI models can handle this easily
+        clean_html = str(soup)[:100000]
         logger.debug(f"Prepared {len(clean_html)} chars of HTML for AI extraction")
         return clean_html
     
@@ -300,12 +301,15 @@ Look for:
 - Phone numbers (look for tel: links, phone classes, or phone number patterns)
 - Website URLs (look for "Visit Site", "Website", or dealership-specific links)
 
-IMPORTANT:
-- Extract EVERY dealership you find, even if some fields are missing
-- If address is combined (e.g., "123 Main St, City, ST 12345"), include it in the street field
-- If you can't find a specific field, use empty string ""
-- Look carefully - dealerships might be in cards, lists, tables, or other containers
-- There should be multiple dealerships (10-100+) on this page
+CRITICAL INSTRUCTIONS:
+- Extract EVERY SINGLE dealership you can find on this page
+- Look EVERYWHERE: headings, links, lists, tables, cards, divs, sections
+- Even if some fields are missing, include the dealership
+- If address is combined (e.g., "123 Main St, City, ST 12345"), put it all in the street field
+- If you can't find a field, use empty string ""
+- There are likely 20-100+ dealerships on this page - find them ALL
+- Don't stop after finding a few - keep looking through the entire HTML
+- Include dealerships even if they only have a name and no other info
 
 Return a JSON array with this structure:
 [
