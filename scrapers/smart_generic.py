@@ -30,7 +30,7 @@ class SmartGenericScraper(BaseScraper):
     def __init__(self):
         super().__init__("Smart Generic (AI-Guided)")
         self.ai_analyzer = AIFallbackScraper()
-        self.min_confidence = 0.6  # Minimum confidence to try a strategy
+        self.min_confidence = 0.5  # Minimum confidence to try a strategy (lowered to be more permissive)
     
     def can_handle(self, html: str, url: str) -> bool:
         """

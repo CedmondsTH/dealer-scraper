@@ -115,7 +115,8 @@ class AIFallbackScraper(BaseScraper):
         Prepare HTML sample for structure analysis.
         
         For structure analysis, we want a representative sample that shows
-        the pattern without being too large.
+        the pattern without being too large. We'll try to find the "meat"
+        of the page where dealership listings are likely to be.
         """
         soup = BeautifulSoup(html, 'html.parser')
         
@@ -123,8 +124,25 @@ class AIFallbackScraper(BaseScraper):
         for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'iframe']):
             tag.decompose()
         
-        # Get a focused sample (first 10000 chars should be enough to see patterns)
-        clean_html = str(soup)[:10000]
+        # Try to find the main content area (where dealerships are likely listed)
+        # Look for common patterns
+        main_content = None
+        
+        # Try to find main content container
+        for selector in ['main', '[role="main"]', '#main', '.main-content', 
+                        '#content', '.content', 'article', '.container']:
+            main_content = soup.select_one(selector)
+            if main_content and len(str(main_content)) > 1000:
+                soup = BeautifulSoup(str(main_content), 'html.parser')
+                break
+        
+        # Get a larger sample - 20K chars to ensure we capture repeating patterns
+        clean_html = str(soup)[:20000]
+        
+        # If the sample is too short, it might be an error page
+        if len(clean_html) < 500:
+            logger.warning(f"HTML sample very short ({len(clean_html)} chars) - might be error page")
+        
         return clean_html
     
     def _create_structure_analysis_prompt(self, html: str, url: str) -> str:
@@ -137,26 +155,38 @@ You are analyzing a dealership location page for {dealer_name} ({url}).
 Your task is to identify the HTML structure and suggest CSS selectors for extracting dealership data.
 DO NOT extract the actual data - just identify the patterns.
 
+IMPORTANT: Even if you're not 100% certain, make your best guess. A confidence of 0.5-0.7 is acceptable.
+Only return confidence 0.0 if the page is clearly an error page or has NO dealership information at all.
+
 Analyze the HTML and return a JSON object with this exact structure:
 {{
   "strategy_type": "css_selectors",
-  "container_selector": "CSS selector that identifies each dealership container (e.g., 'div.dealer-card', 'li.location', 'tr')",
-  "name_selector": "CSS selector for dealership name (relative to container, e.g., 'h3.name', 'a.dealer-link')",
-  "address_selector": "CSS selector for street address (or use 'combined' if address is in one element)",
+  "container_selector": "CSS selector that identifies each dealership container (e.g., 'div.dealer-card', 'li.location', 'tr', 'div[class*=\"location\"]')",
+  "name_selector": "CSS selector for dealership name (relative to container, e.g., 'h3', 'h2', 'a', '.name', 'strong')",
+  "address_selector": "CSS selector for street address (or 'combined' if address is in one element)",
   "city_selector": "CSS selector for city (or 'combined' if part of address)",
   "state_selector": "CSS selector for state (or 'combined' if part of address)",
   "zip_selector": "CSS selector for ZIP code (or 'combined' if part of address)",
-  "phone_selector": "CSS selector for phone number (e.g., 'a[href^=\"tel:\"]', 'span.phone')",
-  "website_selector": "CSS selector for website link (e.g., 'a.website', 'a.visit-site')",
-  "confidence": 0.85,
-  "notes": "Brief notes about the structure (e.g., 'addresses are combined in one element', 'phone in tel: link')"
+  "phone_selector": "CSS selector for phone number (e.g., 'a[href^=\"tel:\"]', '.phone', 'span[class*=\"phone\"]')",
+  "website_selector": "CSS selector for website link (e.g., 'a.website', 'a[href*=\"http\"]')",
+  "confidence": 0.75,
+  "notes": "Brief notes about the structure"
 }}
 
 Look for:
-1. Repeated container patterns (multiple divs/lis/trs with similar structure)
-2. Common class names like: location, dealer, store, card, listing, etc.
-3. Schema.org microdata or JSON-LD
-4. Structured address elements vs combined addresses
+1. Repeated container patterns - ANY repeating divs/lis/articles with similar structure
+2. Common class names: location, dealer, store, card, listing, item, place, site, franchise
+3. Common patterns: cards in a grid, list items, table rows
+4. Links with dealership names
+5. Address patterns (street, city, state, zip)
+6. Phone numbers (tel: links or phone classes)
+
+Tips:
+- Use partial class matching: [class*="location"] instead of exact matches
+- Look for semantic HTML: article, section, aside
+- Check for data attributes: [data-location], [data-dealer]
+- If addresses are combined, set city/state/zip to "combined"
+- If you see ANY repeating pattern that might be dealerships, suggest it with confidence 0.6-0.8
 
 Return ONLY valid JSON. No explanations before or after.
 
