@@ -139,6 +139,12 @@ class BrowserManager:
                 page.wait_for_selector("div.well.matchable-heights", timeout=10000)
                 self.logger.debug("Waited for Ken Garff elements")
             
+            # Ken Ganley specific
+            elif "kenganleyauto.com" in url.lower():
+                # Wait for the panel bodies to load
+                page.wait_for_selector("div.panel-body", timeout=15000)
+                self.logger.debug("Waited for Ken Ganley panel elements")
+            
             # General dealer content
             else:
                 try:
