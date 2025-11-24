@@ -95,7 +95,7 @@ class KenGanleyScraper(BaseScraper):
                     street=street,
                     city=city,
                     state=state,
-                    zip=zip_code,
+                    zip_code=zip_code,
                     phone=phone,
                     website=website
                 )
