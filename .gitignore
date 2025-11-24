@@ -331,5 +331,9 @@ test_output.txt
 # Scraped data & exports
 debug_pages/
 exports/
+data/
 *.xlsx
 *.csv
+
+# Test files (keep out of production)
+test_*.py
