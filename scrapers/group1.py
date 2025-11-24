@@ -1,3 +1,32 @@
+"""
+Group 1 Automotive specific scraping strategy.
+
+This module handles extraction from Group 1 Automotive dealership websites
+using their specific card-based layout patterns.
+"""
+
+import re
+from typing import List
+from bs4 import BeautifulSoup
+from scrapers.base import BaseScraper
+from models.dealership import DealershipData
+from utils.parsers import parse_address
+
+
+class Group1Scraper(BaseScraper):
+    """Scraper for Group 1 Automotive dealership websites."""
+    
+    def __init__(self):
+        super().__init__("Group 1 Automotive")
+    
+    def can_handle(self, html: str, url: str) -> bool:
+        """Check if this is a Group 1 Automotive website."""
+        return (
+            "group1auto" in url.lower() or
+            "div.dealer-card" in html or
+            "div.g1-location-card" in html
+        )
+    
     def extract(self, html: str, url: str) -> List[DealershipData]:
         """Extract dealership data from Group 1 Automotive website."""
         soup = self._get_soup(html)
