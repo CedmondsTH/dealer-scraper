@@ -10,6 +10,7 @@ from scrapers.base import BaseScraper, GenericScraper
 from scrapers.lithia import LithiaScraper
 from scrapers.group1 import Group1Scraper
 from scrapers.edwards import EdwardsScraper
+from scrapers.kenganley import KenGanleyScraper
 from scrapers.ai_fallback import AIFallbackScraper
 
 
@@ -22,6 +23,7 @@ class ScraperManager:
             LithiaScraper(),
             Group1Scraper(),
             EdwardsScraper(),  # Edwards Auto Group specific
+            KenGanleyScraper(), # Ken Ganley specific
             # Add more specific scrapers here
             GenericScraper(),  # Generic patterns
             AIFallbackScraper()  # AI fallback (always last)
