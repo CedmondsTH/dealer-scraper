@@ -7,10 +7,13 @@ page fetching, browser management, and site-specific handling.
 
 import logging
 import time
-from typing import Optional, List
+from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
+import requests
+
+from ..config import config
 
 # Import will be handled gracefully if Playwright not available
 try:
@@ -25,21 +28,19 @@ except ImportError:
 @dataclass
 class ScrapingConfig:
     """Configuration for web scraping operations."""
-    headless: bool = True
-    timeout: int = 60000
-    viewport_width: int = 1920
-    viewport_height: int = 1080
-    user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    wait_for_network_idle: bool = False
-    enable_stealth: bool = False
+    headless: bool = config.HEADLESS
+    timeout: int = config.DEFAULT_TIMEOUT
+    viewport_width: int = config.VIEWPORT_WIDTH
+    viewport_height: int = config.VIEWPORT_HEIGHT
+    user_agent: str = config.USER_AGENT
 
 
 class WebScraper:
     """Service for web scraping operations using Playwright."""
     
-    def __init__(self, config: Optional[ScrapingConfig] = None):
+    def __init__(self, scraping_config: Optional[ScrapingConfig] = None):
         self.logger = logging.getLogger(__name__)
-        self.config = config or ScrapingConfig()
+        self.config = scraping_config or ScrapingConfig()
         
         if not PLAYWRIGHT_AVAILABLE:
             self.logger.error("Playwright is not available. Please install it with: pip install playwright")
@@ -57,70 +58,48 @@ class WebScraper:
         Returns:
             HTML content or None if failed
         """
-        # Domains that frequently block plain requests
         parsed = urlparse(url)
         hostname = (parsed.hostname or "").lower()
-        known_blocked_domains = {
-            "ancira.com",
-            "albrechtauto.com",
-            "allensamuels.com",
-            "baliseauto.com",
-            "bakermotorcompany.com",
-            "bakerautogroup.com",
-        }
+        
+        # Check if domain is known to be blocked
+        is_blocked = any(hostname.endswith(d) for d in config.KNOWN_BLOCKED_DOMAINS)
 
-        # If explicitly forced or known to be hostile, go straight to Playwright subprocess
-        if force_playwright or any(hostname.endswith(d) for d in known_blocked_domains):
-            try:
-                from .playwright_subprocess import fetch_with_playwright_subprocess
-                self.logger.info(f"Using Playwright subprocess (forced) for: {url}")
-                html_content = fetch_with_playwright_subprocess(url, self.config.timeout)
-                if html_content:
-                    if save_debug:
-                        debug_file = Path(f"debug_playwright_{url.split('/')[-1]}.html")
-                        with open(debug_file, 'w', encoding='utf-8') as f:
-                            f.write(html_content)
-                        self.logger.info(f"Debug HTML saved to {debug_file}")
-                    return html_content
-                self.logger.error(f"Playwright subprocess returned no content for {url}")
-            except Exception as e:
-                self.logger.error(f"Forced Playwright subprocess failed for {url}: {e}")
-            # If forced and it failed, don't fall back to requests; just return None
-            if force_playwright:
-                return None
-        # Try requests first (faster and more reliable)
+        if force_playwright or is_blocked:
+            return self._fetch_with_playwright(url, save_debug)
+
+        # Try standard requests first
+        content = self._fetch_with_requests(url, save_debug)
+        if content:
+            return content
+            
+        # Try alternative requests (headers)
+        content = self._fetch_with_alternative_requests(url, save_debug)
+        if content:
+            return content
+            
+        # Fallback to Playwright
+        return self._fetch_with_playwright(url, save_debug)
+
+    def _fetch_with_requests(self, url: str, save_debug: bool) -> Optional[str]:
+        """Attempt to fetch with standard requests."""
         try:
             self.logger.info(f"Starting requests scrape for: {url}")
-            import requests
-            
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
-            
             response = requests.get(url, headers=headers, timeout=self.config.timeout // 1000)
             response.raise_for_status()
             
-            html_content = response.text
-            self.logger.info(f"Successfully fetched {len(html_content)} characters via requests")
-            
-            if save_debug:
-                debug_file = Path(f"debug_requests_{url.split('/')[-1]}.html")
-                with open(debug_file, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-                self.logger.info(f"Debug HTML saved to {debug_file}")
-            
-            return html_content
-            
+            self._save_debug(url, response.text, "requests", save_debug)
+            return response.text
         except Exception as e:
-            self.logger.warning(f"Requests failed for {url}: {e}. Trying with different headers...")
-            
-        # Try requests with different approach for blocked sites
+            self.logger.warning(f"Requests failed for {url}: {e}")
+            return None
+
+    def _fetch_with_alternative_requests(self, url: str, save_debug: bool) -> Optional[str]:
+        """Attempt to fetch with alternative headers."""
         try:
             self.logger.info(f"Trying alternative request approach for: {url}")
-            import requests
-            import time
-            
-            # More sophisticated headers to bypass basic bot detection
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -134,50 +113,46 @@ class WebScraper:
                 'Sec-Fetch-User': '?1',
                 'Cache-Control': 'max-age=0'
             }
-            
-            # Add a small delay to appear more human-like
             time.sleep(1)
-            
             session = requests.Session()
             response = session.get(url, headers=headers, timeout=self.config.timeout // 1000)
             response.raise_for_status()
             
-            html_content = response.text
-            self.logger.info(f"Successfully fetched {len(html_content)} characters via alternative requests")
-            
-            if save_debug:
-                debug_file = Path(f"debug_alternative_{url.split('/')[-1]}.html")
-                with open(debug_file, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-                self.logger.info(f"Debug HTML saved to {debug_file}")
-            
-            return html_content
-            
-        except Exception as e2:
-            self.logger.warning(f"Advanced requests failed for {url}: {e2}. Trying Playwright subprocess...")
-            
-        # Fallback to Playwright subprocess for heavily protected sites
+            self._save_debug(url, response.text, "alternative", save_debug)
+            return response.text
+        except Exception as e:
+            self.logger.warning(f"Advanced requests failed for {url}: {e}")
+            return None
+
+    def _fetch_with_playwright(self, url: str, save_debug: bool) -> Optional[str]:
+        """Fetch using Playwright subprocess."""
         try:
             from .playwright_subprocess import fetch_with_playwright_subprocess
-            
             self.logger.info(f"Using Playwright subprocess for: {url}")
+            
             html_content = fetch_with_playwright_subprocess(url, self.config.timeout)
             
             if html_content:
-                self.logger.info(f"Playwright subprocess success: {len(html_content)} characters")
-                
-                if save_debug:
-                    debug_file = Path(f"debug_playwright_{url.split('/')[-1]}.html")
-                    with open(debug_file, 'w', encoding='utf-8') as f:
-                        f.write(html_content)
-                    self.logger.info(f"Debug HTML saved to {debug_file}")
-                
+                self._save_debug(url, html_content, "playwright", save_debug)
                 return html_content
             else:
-                self.logger.error(f"Playwright subprocess failed for {url}")
+                self.logger.error(f"Playwright subprocess returned no content for {url}")
                 return None
-                
-        except Exception as e3:
-            self.logger.error(f"All scraping methods failed for {url}: {e3}")
+        except Exception as e:
+            self.logger.error(f"Playwright fetch failed for {url}: {e}")
             return None
-    
+
+    def _save_debug(self, url: str, content: str, method: str, save: bool):
+        """Save debug HTML file."""
+        if not save:
+            return
+        try:
+            filename = f"debug_{method}_{url.split('/')[-1]}.html"
+            # Sanitize filename
+            filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
+            debug_file = Path(filename)
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            self.logger.info(f"Debug HTML saved to {debug_file}")
+        except Exception as e:
+            self.logger.warning(f"Failed to save debug file: {e}")

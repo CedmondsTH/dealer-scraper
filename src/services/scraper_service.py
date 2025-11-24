@@ -6,18 +6,18 @@ operations with proper error handling and logging.
 """
 
 import logging
-import sys
-from typing import List, Dict, Any, Optional
 import re
+from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 from dataclasses import dataclass
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..scrapers.strategy_manager import get_configured_scraper
 from .web_scraper import WebScraper
 from .data_service import DataService
 from ..scrapers.strategies.new_llm_strategy import NewLLMExtractorStrategy
-
+from ..config import config
 
 class ScrapingStatus(Enum):
     """Status codes for scraping operations."""
@@ -58,6 +58,7 @@ class ScraperService:
         Args:
             dealer_name: Name of the dealer group
             url: URL to scrape
+            progress_callback: Optional callback for progress updates
             
         Returns:
             ScrapingResult with status and extracted data
@@ -68,6 +69,7 @@ class ScraperService:
             # Step 1: Fetch web page content
             if progress_callback:
                 progress_callback(25, "Fetching page content...")
+            
             html_content = self.web_scraper.fetch_page(url)
             if not html_content:
                 return ScrapingResult(
@@ -80,68 +82,25 @@ class ScraperService:
             # Step 2: Extract dealer data
             if progress_callback:
                 progress_callback(50, "Analyzing website structure...")
+            
             raw_dealers = self.extractor.extract_dealer_data(html_content, url)
             
             # Step 3: Process and validate data
             if progress_callback:
                 progress_callback(60, "Processing dealer data...")
-            processed_dealers = self.data_service.process_dealer_data(
-                raw_dealers, dealer_name
-            )
-
-            # Automatic retry: if no dealers found, attempt force Playwright and re-extract
-            if not processed_dealers:
-                if progress_callback:
-                    progress_callback(70, "No dealers found, trying enhanced scraping...")
-                self.logger.info("No dealers after first pass; retrying with forced Playwright fetch...")
-                html_content_retry = self.web_scraper.fetch_page(url, force_playwright=True)
-                if html_content_retry:
-                    raw_dealers_retry = self.extractor.extract_dealer_data(html_content_retry, url)
-                    processed_dealers = self.data_service.process_dealer_data(
-                        raw_dealers_retry, dealer_name
-                    )
             
-            # Step 4: Determine result status
-            if not processed_dealers:
-                # Try LLM fallback extraction as a last resort
-                try:
-                    if progress_callback:
-                        progress_callback(80, "🤖 Using AI to extract dealer information...")
-                    self.logger.info("No dealers found after retries; attempting LLM fallback extractor...")
-                    dealers_llm = self.llm_fallback._extract_with_llm(html_content_retry or html_content, url)
-                    if dealers_llm:
-                        self.logger.info(f"LLM fallback extracted {len(dealers_llm)} dealers")
-                        processed_dealers = self.data_service.process_dealer_data(dealers_llm, dealer_name)
-                        # Return immediately if LLM found dealers
-                        if processed_dealers:
-                            if progress_callback:
-                                progress_callback(100, f"✅ AI successfully extracted {len(processed_dealers)} dealers!")
-                            return ScrapingResult(
-                                status=ScrapingStatus.SUCCESS,
-                                dealers=processed_dealers,
-                                message=f"Successfully extracted {len(processed_dealers)} dealer locations via LLM"
-                            )
-                    else:
-                        self.logger.warning("LLM fallback returned no dealers")
-                except Exception as e:
-                    self.logger.error(f"LLM fallback failed: {str(e)}")
-                    import traceback
-                    self.logger.error(f"LLM fallback traceback: {traceback.format_exc()}")
+            processed_dealers = self.data_service.process_dealer_data(raw_dealers, dealer_name)
 
-                # Generic fallback: try sitemap crawl for "locations" directories that are JS-rendered
-                parsed = urlparse(url)
-                hostname = (parsed.hostname or "").lower()
-                path = (parsed.path or "").lower()
-                if any(k in path for k in ("/locations", "locations.", "our-locations", "/location/")):
-                    self.logger.info("No dealers found; attempting sitemap crawl for locations pages...")
-                    sitemap_dealers = self._crawl_sitemap_locations(url, dealer_name)
-                    if sitemap_dealers:
-                        self.logger.info(f"Sitemap crawl recovered {len(sitemap_dealers)} locations")
-                        return ScrapingResult(
-                            status=ScrapingStatus.SUCCESS,
-                            dealers=sitemap_dealers,
-                            message=f"Successfully extracted {len(sitemap_dealers)} dealer locations via sitemap"
-                        )
+            # Step 4: Retry Logic (Force Playwright)
+            if not processed_dealers:
+                processed_dealers = self._retry_with_playwright(url, dealer_name, progress_callback)
+            
+            # Step 5: Fallback Logic (LLM & Sitemap)
+            if not processed_dealers:
+                processed_dealers = self._attempt_fallbacks(url, dealer_name, html_content, progress_callback)
+
+            # Final Status Determination
+            if not processed_dealers:
                 return ScrapingResult(
                     status=ScrapingStatus.NO_DATA,
                     dealers=[],
@@ -170,29 +129,66 @@ class ScraperService:
                 message="Scraping operation failed",
                 error=str(e)
             )
-    
+
+    def _retry_with_playwright(self, url: str, dealer_name: str, progress_callback) -> List[Dict[str, Any]]:
+        """Retry scraping using forced Playwright execution."""
+        if progress_callback:
+            progress_callback(70, "No dealers found, trying enhanced scraping...")
+        
+        self.logger.info("No dealers after first pass; retrying with forced Playwright fetch...")
+        html_content_retry = self.web_scraper.fetch_page(url, force_playwright=True)
+        
+        if html_content_retry:
+            raw_dealers_retry = self.extractor.extract_dealer_data(html_content_retry, url)
+            return self.data_service.process_dealer_data(raw_dealers_retry, dealer_name)
+        return []
+
+    def _attempt_fallbacks(self, url: str, dealer_name: str, html_content: str, progress_callback) -> List[Dict[str, Any]]:
+        """Attempt LLM and Sitemap fallbacks."""
+        # LLM Fallback
+        try:
+            if progress_callback:
+                progress_callback(80, "🤖 Using AI to extract dealer information...")
+            
+            self.logger.info("Attempting LLM fallback extractor...")
+            dealers_llm = self.llm_fallback._extract_with_llm(html_content, url)
+            
+            if dealers_llm:
+                self.logger.info(f"LLM fallback extracted {len(dealers_llm)} dealers")
+                processed = self.data_service.process_dealer_data(dealers_llm, dealer_name)
+                if processed:
+                    return processed
+        except Exception as e:
+            self.logger.error(f"LLM fallback failed: {e}")
+
+        # Sitemap Fallback
+        self.logger.info("Attempting sitemap crawl...")
+        return self._crawl_sitemap_locations(url, dealer_name)
+
     def scrape_multiple_urls(self, dealer_name: str, urls: List[str]) -> ScrapingResult:
         """
-        Scrape multiple URLs for a dealer group.
-        
-        Args:
-            dealer_name: Name of the dealer group
-            urls: List of URLs to scrape
-            
-        Returns:
-            Combined ScrapingResult from all URLs
+        Scrape multiple URLs for a dealer group concurrently.
         """
         all_dealers = []
         errors = []
         
-        for url in urls:
-            result = self.scrape_dealer_locations(dealer_name, url)
-            if result.success:
-                all_dealers.extend(result.dealers)
-            elif result.error:
-                errors.append(f"{url}: {result.error}")
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_url = {
+                executor.submit(self.scrape_dealer_locations, dealer_name, url): url 
+                for url in urls
+            }
+            
+            for future in as_completed(future_to_url):
+                url = future_to_url[future]
+                try:
+                    result = future.result()
+                    if result.success:
+                        all_dealers.extend(result.dealers)
+                    elif result.error:
+                        errors.append(f"{url}: {result.error}")
+                except Exception as e:
+                    errors.append(f"{url}: {str(e)}")
         
-        # Deduplicate across all URLs
         unique_dealers = self.data_service.deduplicate_dealers(all_dealers)
         
         if not unique_dealers:
@@ -210,53 +206,36 @@ class ScraperService:
         )
 
     def _crawl_sitemap_locations(self, root_url: str, dealer_name: str) -> List[Dict[str, Any]]:
-        """Attempt to discover and scrape individual location pages via sitemap(s).
-
-        This is useful for sites that render a search-only locations page (no static list).
-        """
+        """Attempt to discover and scrape individual location pages via sitemap(s)."""
         try:
             parsed = urlparse(root_url)
             base = f"{parsed.scheme}://{parsed.hostname}"
             index_url = base + "/sitemap-index.xml"
+            
             self.logger.info(f"Fetching sitemap index: {index_url}")
             index_html = self.web_scraper.fetch_page(index_url, save_debug=False)
             if not index_html:
                 return []
 
-            # Find all URLs listed in <loc> tags
             loc_urls = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", index_html)
-            # Collect candidate sitemaps and pages under /locations/
-            location_sitemaps = [u for u in loc_urls if "/sitemap" in u and "/locations" in u and u.endswith('.xml')]
             location_pages = [u for u in loc_urls if "/locations/" in u and not u.endswith('.xml')]
-
-            # Also fetch any location-specific sitemaps to expand pages
+            
+            # Also check sub-sitemaps
+            location_sitemaps = [u for u in loc_urls if "/sitemap" in u and "/locations" in u and u.endswith('.xml')]
             for sm in location_sitemaps:
-                self.logger.info(f"Fetching location sitemap: {sm}")
                 sm_html = self.web_scraper.fetch_page(sm, save_debug=False)
-                if not sm_html:
-                    continue
-                sm_locs = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", sm_html)
-                for u in sm_locs:
-                    if "/locations/" in u and not u.endswith('.xml'):
-                        location_pages.append(u)
+                if sm_html:
+                    sm_locs = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", sm_html)
+                    location_pages.extend([u for u in sm_locs if "/locations/" in u and not u.endswith('.xml')])
 
-            # De-dup and cap to reasonable count
             unique_pages = list(dict.fromkeys(location_pages))[:500]
             if not unique_pages:
                 return []
 
-            all_dealers: List[Dict[str, Any]] = []
-            for loc_url in unique_pages:
-                html = self.web_scraper.fetch_page(loc_url, save_debug=False)
-                if not html:
-                    continue
-                extracted = self.extractor.extract_dealer_data(html, loc_url)
-                if extracted:
-                    all_dealers.extend(extracted)
+            # Use the concurrent scraper for these pages
+            result = self.scrape_multiple_urls(dealer_name, unique_pages)
+            return result.dealers
 
-            # Final clean + dedupe
-            processed = self.data_service.process_dealer_data(all_dealers, dealer_name=dealer_name)
-            return processed
         except Exception as e:
             self.logger.warning(f"Sitemap crawl failed: {e}")
             return []

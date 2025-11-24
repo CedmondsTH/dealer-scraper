@@ -8,6 +8,7 @@ various dealer websites that don't have specific strategies.
 from typing import List, Dict, Any
 import re
 import sys
+import logging
 from bs4 import BeautifulSoup
 
 from ..base_scraper import ScraperStrategy
@@ -16,6 +17,9 @@ from ...utils.data_cleaner import data_cleaner
 
 
 class GenericDealerStrategy(ScraperStrategy):
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
     """Extracts dealer data from generic dealer HTML structures."""
     
     @property
@@ -43,16 +47,16 @@ class GenericDealerStrategy(ScraperStrategy):
         
         # Check for Banister-style dealer location cards (panel-based layout)
         dealer_panels = soup.find_all('div', class_=lambda x: x and 'panel' in x and 'panel-default' in x)
-        print(f"DEBUG: Found {len(dealer_panels)} dealer panels with panel/panel-default classes", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Found {len(dealer_panels)} dealer panels with panel/panel-default classes")
         if len(dealer_panels) >= 3:
-            print(f"DEBUG: Banister panel detection SUCCESS - found {len(dealer_panels)} panels", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Banister panel detection SUCCESS - found {len(dealer_panels)} panels")
             return True
             
         # Check for Bakhtiari-style dealer location cards (location class layout)
         dealer_locations = soup.find_all('div', class_=lambda x: x and 'location' in x and 'bg-main' in x)
-        print(f"DEBUG: Found {len(dealer_locations)} dealer locations with location/bg-main classes", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Found {len(dealer_locations)} dealer locations with location/bg-main classes")
         if len(dealer_locations) >= 3:
-            print(f"DEBUG: Bakhtiari location detection SUCCESS - found {len(dealer_locations)} locations", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Bakhtiari location detection SUCCESS - found {len(dealer_locations)} locations")
             return True
 
         # Check for Colonial-style dealer listings (div.get-direction__dealer-name)
@@ -62,9 +66,9 @@ class GenericDealerStrategy(ScraperStrategy):
             if 'colonial' in div.get_text().lower():
                 colonial_count += 1
         
-        print(f"DEBUG: Found {colonial_count} Colonial-style dealer names", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Found {colonial_count} Colonial-style dealer names")
         if colonial_count >= 3:
-            print(f"DEBUG: Colonial detection SUCCESS - found {colonial_count} dealers", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Colonial detection SUCCESS - found {colonial_count} dealers")
             return True
         
         for pattern in patterns:
@@ -93,61 +97,61 @@ class GenericDealerStrategy(ScraperStrategy):
         
         # Try different extraction methods
         banister_dealers = self._extract_banister_style_dealers(soup, page_url)
-        print(f"DEBUG: Banister extraction found {len(banister_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Banister extraction found {len(banister_dealers)} dealers")
         dealers.extend(banister_dealers)
         
         bakhtiari_dealers = self._extract_bakhtiari_style_dealers(soup, page_url)
-        print(f"DEBUG: Bakhtiari extraction found {len(bakhtiari_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Bakhtiari extraction found {len(bakhtiari_dealers)} dealers")
         dealers.extend(bakhtiari_dealers)
         
         colonial_dealers = self._extract_colonial_style_dealers(soup, page_url)
-        print(f"DEBUG: Colonial extraction found {len(colonial_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Colonial extraction found {len(colonial_dealers)} dealers")
         dealers.extend(colonial_dealers)
         
         hgreg_dealers = self._extract_hgreg_dealers(soup, page_url)
-        print(f"DEBUG: HGreg extraction found {len(hgreg_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: HGreg extraction found {len(hgreg_dealers)} dealers")
         dealers.extend(hgreg_dealers)
         
         ken_ganley_dealers = self._extract_ken_ganley_dealers(soup, page_url)
-        print(f"DEBUG: Ken Ganley extraction found {len(ken_ganley_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Ken Ganley extraction found {len(ken_ganley_dealers)} dealers")
         dealers.extend(ken_ganley_dealers)
         
         group1_dealers = self._extract_group1_subpage_dealers(soup, page_url)
-        print(f"DEBUG: Group1 extraction found {len(group1_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Group1 extraction found {len(group1_dealers)} dealers")
         dealers.extend(group1_dealers)
         
         sierra_dealers = self._extract_sierra_auto_dealers(soup, page_url)
-        print(f"DEBUG: Sierra extraction found {len(sierra_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Sierra extraction found {len(sierra_dealers)} dealers")
         dealers.extend(sierra_dealers)
         
         gregory_dealers = self._extract_gregory_auto_dealers(soup, page_url)
-        print(f"DEBUG: Gregory extraction found {len(gregory_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Gregory extraction found {len(gregory_dealers)} dealers")
         dealers.extend(gregory_dealers)
         
         carwash_dealers = self._extract_carwash_dealers(soup, page_url)
-        print(f"DEBUG: Carwash extraction found {len(carwash_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Carwash extraction found {len(carwash_dealers)} dealers")
         dealers.extend(carwash_dealers)
         
         open_road_dealers = self._extract_open_road_dealers(soup, page_url)
-        print(f"DEBUG: Open Road extraction found {len(open_road_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Open Road extraction found {len(open_road_dealers)} dealers")
         dealers.extend(open_road_dealers)
         
         all_american_dealers = self._extract_all_american_dealers(soup, page_url)
-        print(f"DEBUG: All American extraction found {len(all_american_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: All American extraction found {len(all_american_dealers)} dealers")
         dealers.extend(all_american_dealers)
         
         autobell_dealers = self._extract_autobell_dealers(soup, page_url)
-        print(f"DEBUG: AutoBell extraction found {len(autobell_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: AutoBell extraction found {len(autobell_dealers)} dealers")
         dealers.extend(autobell_dealers)
         dealeron_dealers = self._extract_dealeron_locations(soup, page_url)
-        print(f"DEBUG: Dealeron extraction found {len(dealeron_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Dealeron extraction found {len(dealeron_dealers)} dealers")
         dealers.extend(dealeron_dealers)
         
         heading_dealers = self._extract_heading_address_blocks(soup, page_url)
-        print(f"DEBUG: Heading/Address extraction found {len(heading_dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Heading/Address extraction found {len(heading_dealers)} dealers")
         dealers.extend(heading_dealers)
         
-        print(f"DEBUG: Generic dealer strategy extracted {len(dealers)} dealers", file=sys.stderr)
+        self.logger.debug(f"DEBUG: Generic dealer strategy extracted {len(dealers)} dealers")
         return dealers
 
     def _extract_banister_style_dealers(self, soup: BeautifulSoup, page_url: str) -> List[Dict[str, Any]]:
@@ -156,7 +160,7 @@ class GenericDealerStrategy(ScraperStrategy):
         
         # Look for panel-based dealer cards
         dealer_panels = soup.find_all('div', class_=lambda x: x and 'panel' in x and 'panel-default' in x)
-        print(f"DEBUG: _extract_banister_style_dealers found {len(dealer_panels)} panels", file=sys.stderr)
+        self.logger.debug(f"DEBUG: _extract_banister_style_dealers found {len(dealer_panels)} panels")
         
         if not dealer_panels:
             return dealers
@@ -181,18 +185,18 @@ class GenericDealerStrategy(ScraperStrategy):
             
             # Get all paragraph elements
             p_elements = panel.find_all('p', class_='larger')
-            print(f"DEBUG: Panel found {len(p_elements)} p.larger elements", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Panel found {len(p_elements)} p.larger elements")
             
             for p in p_elements:
                 # CRITICAL: Use get_text() with separator to preserve <br> as line breaks!
                 p_text = p.get_text('\n', strip=True)  
-                print(f"DEBUG: p_text with line breaks: '{p_text}'", file=sys.stderr)
+                self.logger.debug(f"DEBUG: p_text with line breaks: '{p_text}'")
                 
                 # Check if this paragraph contains a phone number
                 phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', p_text)
                 if phone_match:
                     phone = phone_match.group(0)
-                    print(f"DEBUG: Found phone: {phone}", file=sys.stderr)
+                    self.logger.debug(f"DEBUG: Found phone: {phone}")
                     continue
                 
                 # Check if this paragraph contains an address
@@ -200,7 +204,7 @@ class GenericDealerStrategy(ScraperStrategy):
                 address_keywords = ['blvd', 'street', 'road', 'ave', 'dr', 'freeway', 'fwy', 'pkwy', 'ste', 'suite', 'way', 'ln', 'lane', 'ct', 'court', 'pl', 'place', 'hwy', 'st', 'rd', 'ave', 'drive', 'main', 'hill', 'kansas']
                 if not phone_match and any(keyword in p_text.lower() for keyword in address_keywords):
                     lines = [line.strip() for line in p_text.split('\n') if line.strip()]
-                    print(f"DEBUG: Address paragraph has {len(lines)} lines: {lines}", file=sys.stderr)
+                    self.logger.debug(f"DEBUG: Address paragraph has {len(lines)} lines: {lines}")
                     if len(lines) >= 2:
                         # First line is street
                         street = lines[0]
@@ -211,12 +215,12 @@ class GenericDealerStrategy(ScraperStrategy):
                         city_match = re.match(r'([^,]+),?\s*([A-Z]{2})\s*(\d{5})', city_line)
                         if city_match:
                             city, state, zip_code = city_match.groups()
-                            print(f"DEBUG: Parsed address - street='{street}', city='{city}', state='{state}'", file=sys.stderr)
+                            self.logger.debug(f"DEBUG: Parsed address - street='{street}', city='{city}', state='{state}'")
             
             # If we got basic info, add the dealer
-            print(f"DEBUG: Panel processed - name='{name}', street='{street}', city='{city}'", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Panel processed - name='{name}', street='{street}', city='{city}'")
             if name and street:
-                print(f"DEBUG: Adding dealer: {name}", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Adding dealer: {name}")
                 dealers.append({
                     "name": name,
                     "street": street,
@@ -227,7 +231,7 @@ class GenericDealerStrategy(ScraperStrategy):
                     "website": page_url
                 })
             else:
-                print(f"DEBUG: Skipping panel - missing name or street", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Skipping panel - missing name or street")
         
         return dealers
 
@@ -323,7 +327,7 @@ class GenericDealerStrategy(ScraperStrategy):
             
             name_lower = name.lower()
             if any(nav_term in name_lower for nav_term in navigation_terms):
-                print(f"DEBUG: Rejected navigation heading: {name}", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Rejected navigation heading: {name}")
                 continue
             # Collect small following sibling texts up to next heading
             texts: list[str] = []
@@ -702,7 +706,7 @@ class GenericDealerStrategy(ScraperStrategy):
         
         # Look for Bakhtiari-style dealer cards
         dealer_cards = soup.find_all('div', class_=lambda x: x and 'location' in x and 'bg-main' in x)
-        print(f"DEBUG: _extract_bakhtiari_style_dealers found {len(dealer_cards)} location cards", file=sys.stderr)
+        self.logger.debug(f"DEBUG: _extract_bakhtiari_style_dealers found {len(dealer_cards)} location cards")
         
         if not dealer_cards:
             return dealers
@@ -739,17 +743,17 @@ class GenericDealerStrategy(ScraperStrategy):
             
             # Extract address from p.larger elements
             p_elements = card.find_all('p', class_='larger')
-            print(f"DEBUG: Bakhtiari card found {len(p_elements)} p.larger elements", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Bakhtiari card found {len(p_elements)} p.larger elements")
             
             for p in p_elements:
                 p_text = p.get_text('\n', strip=True)
-                print(f"DEBUG: Bakhtiari p_text: '{p_text}'", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Bakhtiari p_text: '{p_text}'")
                 
                 # Check if this paragraph contains a phone number
                 phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', p_text)
                 if phone_match:
                     phone = phone_match.group(0)
-                    print(f"DEBUG: Bakhtiari found phone: {phone}", file=sys.stderr)
+                    self.logger.debug(f"DEBUG: Bakhtiari found phone: {phone}")
                     continue
                 
                 # Check if this paragraph contains an address
@@ -757,7 +761,7 @@ class GenericDealerStrategy(ScraperStrategy):
                 address_keywords = ['blvd', 'street', 'road', 'ave', 'dr', 'freeway', 'fwy', 'pkwy', 'ste', 'suite', 'way', 'ln', 'lane', 'ct', 'court', 'pl', 'place', 'hwy', 'st', 'rd', 'ave', 'drive', 'main', 'hill', 'kansas']
                 if not phone_match and any(keyword in p_text.lower() for keyword in address_keywords):
                     lines = [line.strip() for line in p_text.split('\n') if line.strip()]
-                    print(f"DEBUG: Bakhtiari address paragraph has {len(lines)} lines: {lines}", file=sys.stderr)
+                    self.logger.debug(f"DEBUG: Bakhtiari address paragraph has {len(lines)} lines: {lines}")
                     
                     if len(lines) >= 2:
                         # First line is street
@@ -769,12 +773,12 @@ class GenericDealerStrategy(ScraperStrategy):
                         city_match = re.match(r'([^,]+),?\s*([A-Z]{2})\s*(\d{5})', city_line)
                         if city_match:
                             city, state, zip_code = city_match.groups()
-                            print(f"DEBUG: Bakhtiari parsed address - street='{street}', city='{city}', state='{state}'", file=sys.stderr)
+                            self.logger.debug(f"DEBUG: Bakhtiari parsed address - street='{street}', city='{city}', state='{state}'")
             
             # If we got basic info, add the dealer
-            print(f"DEBUG: Bakhtiari processed - name='{name}', street='{street}', city='{city}'", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Bakhtiari processed - name='{name}', street='{street}', city='{city}'")
             if name and street:
-                print(f"DEBUG: Adding Bakhtiari dealer: {name}", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Adding Bakhtiari dealer: {name}")
                 dealers.append({
                     "name": name,
                     "street": street,
@@ -785,7 +789,7 @@ class GenericDealerStrategy(ScraperStrategy):
                     "website": page_url
                 })
             else:
-                print(f"DEBUG: Skipping Bakhtiari card - missing name or street", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Skipping Bakhtiari card - missing name or street")
         
         return dealers
     
@@ -801,11 +805,11 @@ class GenericDealerStrategy(ScraperStrategy):
             if 'colonial' in div.get_text().lower():
                 colonial_divs.append(div)
         
-        print(f"DEBUG: _extract_colonial_style_dealers found {len(colonial_divs)} dealer divs", file=sys.stderr)
+        self.logger.debug(f"DEBUG: _extract_colonial_style_dealers found {len(colonial_divs)} dealer divs")
         
         for div in colonial_divs:
             name = div.get_text().strip()
-            print(f"DEBUG: Processing Colonial dealer: {name}", file=sys.stderr)
+            self.logger.debug(f"DEBUG: Processing Colonial dealer: {name}")
             
             # Look for address and phone information in the next sibling divs
             street = ""
@@ -825,14 +829,14 @@ class GenericDealerStrategy(ScraperStrategy):
             while current and siblings_checked < 10:  # Look at next few siblings
                 if hasattr(current, 'get_text'):
                     text = current.get_text().strip()
-                    print(f"DEBUG: Colonial sibling text: '{text}'", file=sys.stderr)
+                    self.logger.debug(f"DEBUG: Colonial sibling text: '{text}'")
                     
                     if text:  # Non-empty text
                         # Check for phone number
                         phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
                         if phone_match and not phone:
                             phone = phone_match.group(0)
-                            print(f"DEBUG: Found Colonial phone: {phone}", file=sys.stderr)
+                            self.logger.debug(f"DEBUG: Found Colonial phone: {phone}")
                         
                         # Check for address pattern (street + city, state zip)
                         elif not street and ',' in text:
@@ -847,7 +851,7 @@ class GenericDealerStrategy(ScraperStrategy):
                                 if city_match:
                                     street = potential_street
                                     city, state, zip_code = city_match.groups()
-                                    print(f"DEBUG: Found Colonial address - street='{street}', city='{city}', state='{state}', zip='{zip_code}'", file=sys.stderr)
+                                    self.logger.debug(f"DEBUG: Found Colonial address - street='{street}', city='{city}', state='{state}', zip='{zip_code}'")
                     
                     siblings_checked += 1
                 
@@ -864,8 +868,8 @@ class GenericDealerStrategy(ScraperStrategy):
                     "phone": phone,
                     "website": page_url
                 })
-                print(f"DEBUG: Added Colonial dealer: {name} at {street}", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Added Colonial dealer: {name} at {street}")
             else:
-                print(f"DEBUG: Skipping Colonial dealer - missing info: name={bool(name)}, street={bool(street)}, city={bool(city)}, state={bool(state)}", file=sys.stderr)
+                self.logger.debug(f"DEBUG: Skipping Colonial dealer - missing info: name={bool(name)}, street={bool(street)}, city={bool(city)}, state={bool(state)}")
         
         return dealers

@@ -13,32 +13,15 @@ class DataCleaner:
     """Handles cleaning and validation of dealer data."""
     
     def __init__(self):
+        from ..config import config
         # Names that should be filtered out as invalid dealerships
-        self.invalid_names = {
-            "locations", "saved", "community news", "essential cookies", 
-            "sales", "service phone:", "parts phone:"
-        }
+        self.invalid_names = config.INVALID_NAMES
         
         # Car brands for classification
-        self.car_brands = [
-            "Acura", "Airstream", "Alfa Romeo", "Aston Martin", "Audi", "Bentley", "BMW", 
-            "Bugatti", "Cadillac", "Chevrolet", "Ferrari", "FIAT", "Ford", "Genesis", "GMC", 
-            "Honda", "Hummer", "Hyundai", "Infiniti", "Isuzu", "Jaguar", "Kia", "Lamborghini", 
-            "Land Rover", "Lexus", "Lincoln", "Maserati", "Mazda", "McLaren", "Mercedes-Benz", 
-            "Mini", "Mitsubishi", "Nissan", "Polestar", "Porsche", "Rolls-Royce", "smart", 
-            "Sprinter", "Subaru", "Tesla", "Toyota", "Volkswagen", "Volvo", "Lotus", "INEOS", 
-            "Koenigsegg", "Harley-Davidson", "Rimac", "Karma", "Lucid", "Vinfast", "CDJR", 
-            "CDJRF", "Buick GMC", "Rivian", "Ford PRO", "GMC/Chevy Business Elite", 
-            "RAM Commercial", "Freightliner", "Western Star", "International", "Peterbilt", 
-            "Kenworth", "Mack", "Hino", "Capacity", "Autocar", "Fuso", "Maybach", "Pagani", 
-            "Chrysler", "Dodge", "Scion", "Jeep"
-        ]
+        self.car_brands = config.CAR_BRANDS
         
         # Canadian provinces
-        self.canadian_provinces = {
-            "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", 
-            "ON", "PE", "QC", "SK", "YT"
-        }
+        self.canadian_provinces = config.CANADIAN_PROVINCES
     
     def is_valid_dealership(self, dealer_data: Dict[str, Any]) -> bool:
         """
@@ -51,23 +34,19 @@ class DataCleaner:
             True if valid dealership, False otherwise
         """
         # Debug: print what we're validating
-        print(f"DEBUG: Validating dealer: {dealer_data}")
+        # print(f"DEBUG: Validating dealer: {dealer_data}")
         
         # Handle both capitalized and lowercase key formats
         name = (dealer_data.get("name", "") or dealer_data.get("Name", "") or "").strip().lower()
         street = (dealer_data.get("street", "") or dealer_data.get("Street", "") or "").strip()
         website = (dealer_data.get("website", "") or dealer_data.get("Website", "") or "").strip()
         
-        print(f"DEBUG: name='{name}', street='{street}', website='{website}'")
-        
         # Must have name and street
         if not name or not street:
-            print(f"DEBUG: Rejected - missing name or street")
             return False
         
         # Filter out invalid names
         if name in self.invalid_names:
-            print(f"DEBUG: Rejected - invalid name '{name}'")
             return False
             
         # Filter out descriptive text that's not a dealer name
@@ -75,20 +54,16 @@ class DataCleaner:
             'treat', 'need', 'customer', 'concern', 'expectation', 'standard', 'demonstrate',
             'about', 'welcome to', 'group description', 'our mission'
         ]):
-            print(f"DEBUG: Rejected - descriptive text: {name}")
             return False
             
         # Filter out mangled addresses in street field
         if len(street) > 100 or ('directions' in street.lower() and ',' in street):
-            print(f"DEBUG: Rejected - mangled address: {street[:50]}...")
             return False
         
         # Filter out invalid websites
         if website.startswith("#") or website.startswith("/"):
-            print(f"DEBUG: Rejected - invalid website '{website}'")
             return False
         
-        print(f"DEBUG: Accepted dealer: {name}")
         return True
     
     def normalize_name(self, name: str) -> str:
@@ -100,7 +75,7 @@ class DataCleaner:
         normalized = name.strip().title()
         
         # Restore common abbreviations to uppercase
-        uppercase_abbrevs = ["NE", "NW", "SE", "SW", "GMC", "FIAT", "RAM", "BMW", "USA", "II", "III", "IV"]
+        uppercase_abbrevs = ["NE", "NW", "SE", "SW", "GMC", "FIAT", "RAM", "BMW", "USA", "II", "III", "IV", "LLC", "INC", "LTD"]
         for abbr in uppercase_abbrevs:
             pattern = rf"\b{abbr.title()}(?=\b|[.,;:!?\s]|$)"
             normalized = re.sub(pattern, abbr, normalized)

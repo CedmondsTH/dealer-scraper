@@ -12,7 +12,7 @@ from io import BytesIO
 
 from ..utils.data_cleaner import data_cleaner
 from ..utils.address_parser import address_parser
-
+from ..models import Dealer
 
 class DataService:
     """Service for data processing and transformation operations."""
@@ -30,25 +30,25 @@ class DataService:
             dealer_group: Name of the dealer group
             
         Returns:
-            List of processed and standardized dealer records
+            List of processed and standardized dealer records (as dictionaries)
         """
         try:
             self.logger.info(f"Processing {len(raw_dealers)} raw dealer records")
             
-            # Step 1: Filter valid dealerships
-            valid_dealers = [d for d in raw_dealers if data_cleaner.is_valid_dealership(d)]
-            self.logger.info(f"Valid dealerships after filtering: {len(valid_dealers)}")
+            # Step 1: Filter valid dealerships using DataCleaner
+            valid_raw_dealers = [d for d in raw_dealers if data_cleaner.is_valid_dealership(d)]
+            self.logger.info(f"Valid dealerships after filtering: {len(valid_raw_dealers)}")
             
-            # Step 2: Deduplicate
-            unique_dealers = data_cleaner.deduplicate_dealers(valid_dealers)
-            self.logger.info(f"Unique dealerships after deduplication: {len(unique_dealers)}")
+            # Step 2: Deduplicate raw data
+            unique_raw_dealers = data_cleaner.deduplicate_dealers(valid_raw_dealers)
             
-            # Step 3: Standardize and enrich data
+            # Step 3: Standardize and validate using Pydantic Model
             processed_dealers = []
-            for dealer in unique_dealers:
-                processed_dealer = self._standardize_dealer_record(dealer, dealer_group)
-                if processed_dealer:
-                    processed_dealers.append(processed_dealer)
+            for raw_dealer in unique_raw_dealers:
+                dealer_model = self._create_dealer_model(raw_dealer, dealer_group)
+                if dealer_model:
+                    # Convert back to dict for compatibility with DataFrame
+                    processed_dealers.append(dealer_model.model_dump(by_alias=True))
             
             self.logger.info(f"Final processed dealers: {len(processed_dealers)}")
             return processed_dealers
@@ -57,16 +57,15 @@ class DataService:
             self.logger.error(f"Error processing dealer data: {str(e)}", exc_info=True)
             return []
     
-    def _standardize_dealer_record(self, dealer: Dict[str, Any], 
-                                 dealer_group: str) -> Optional[Dict[str, Any]]:
-        """Standardize a single dealer record."""
+    def _create_dealer_model(self, dealer: Dict[str, Any], dealer_group: str) -> Optional[Dealer]:
+        """Create and validate a Dealer model from raw data."""
         try:
-            # Extract and clean basic info (handle both capitalized and lowercase keys)
+            # Extract and clean basic info
             name = data_cleaner.normalize_name(dealer.get("name", "") or dealer.get("Name", ""))
             if not name:
                 return None
             
-            # Process address (handle both capitalized and lowercase keys)
+            # Process address
             street = dealer.get("street", "") or dealer.get("Street", "")
             city = data_cleaner.normalize_city(dealer.get("city", "") or dealer.get("City", ""))
             state = (dealer.get("state", "") or dealer.get("State", "")).strip().upper()
@@ -76,7 +75,7 @@ class DataService:
             if street:
                 street = address_parser.normalize_address_abbreviations(street)
             
-            # Extract contact info (handle both capitalized and lowercase keys)
+            # Extract contact info
             phone = data_cleaner.extract_phone_number(dealer.get("phone", "") or dealer.get("Phone", ""))
             website = data_cleaner.normalize_website(dealer.get("website", "") or dealer.get("Website", ""))
             
@@ -85,22 +84,23 @@ class DataService:
             car_brands = data_cleaner.extract_car_brands(name)
             country = data_cleaner.determine_country(state)
             
-            return {
-                "Dealership": name,
-                "Dealer Group": dealer_group,
-                "Dealership Type": dealer_type,
-                "Car Brand": car_brands,
-                "Address": street,
-                "City": city,
-                "State/Province": state,
-                "Postal Code": zip_code,
-                "Phone": phone,
-                "Country": country,
-                "Website": website
-            }
+            # Create Pydantic model
+            return Dealer(
+                Dealership=name,
+                **{"Dealer Group": dealer_group},
+                **{"Dealership Type": dealer_type},
+                **{"Car Brand": car_brands},
+                Address=street,
+                City=city,
+                **{"State/Province": state},
+                **{"Postal Code": zip_code},
+                Phone=phone,
+                Country=country,
+                Website=website
+            )
             
         except Exception as e:
-            self.logger.warning(f"Failed to standardize dealer record: {str(e)}")
+            # self.logger.warning(f"Failed to create Dealer model: {str(e)}")
             return None
     
     def create_dataframe(self, dealers: List[Dict[str, Any]]) -> pd.DataFrame:
