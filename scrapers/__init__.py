@@ -12,6 +12,7 @@ from scrapers.group1 import Group1Scraper
 from scrapers.edwards import EdwardsScraper
 from scrapers.kenganley import KenGanleyScraper
 from scrapers.sonic import SonicScraper
+from scrapers.smart_generic import SmartGenericScraper
 from scrapers.ai_fallback import AIFallbackScraper
 
 
@@ -21,14 +22,20 @@ class ScraperManager:
     def __init__(self):
         # Initialize all scrapers in priority order
         self.scrapers = [
+            # Specific dealer group scrapers (fast, reliable)
             LithiaScraper(),
             Group1Scraper(),
             EdwardsScraper(),  # Edwards Auto Group specific
             KenGanleyScraper(), # Ken Ganley specific
             SonicScraper(),  # Sonic Automotive specific
             # Add more specific scrapers here
-            GenericScraper(),  # Generic patterns
-            AIFallbackScraper()  # AI fallback (always last)
+            
+            # AI-guided smart scraper (learns from page structure)
+            SmartGenericScraper(),  # Uses AI to identify extraction strategy
+            
+            # Fallback scrapers (last resort)
+            GenericScraper(),  # Basic generic patterns
+            AIFallbackScraper()  # Full AI extraction (slowest, always last)
         ]
     
     def extract_dealerships(self, html: str, url: str, dealer_name: str = "") -> List:
@@ -63,12 +70,9 @@ class ScraperManager:
                     
                     collection.extend(dealerships)
                     
-                    # If we found dealerships, we're done (unless it's AI fallback)
-                    if dealerships and not isinstance(scraper, AIFallbackScraper):
+                    # If we found dealerships, we're done
+                    if dealerships:
                         logger.info(f"Successfully extracted {len(collection)} dealerships using {scraper.name}")
-                        break
-                    elif dealerships and isinstance(scraper, AIFallbackScraper):
-                        logger.info(f"AI fallback found {len(collection)} dealerships")
                         break
                     
                 except Exception as e:
