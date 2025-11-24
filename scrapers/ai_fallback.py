@@ -3,11 +3,15 @@ AI-powered fallback scraper using Google Gemini.
 
 This module provides intelligent extraction capabilities for websites
 that don't match any hardcoded patterns, using Gemini AI for analysis.
+
+Features:
+- Structure analysis: AI identifies the best extraction strategy
+- Direct extraction: AI extracts data directly as a fallback
 """
 
 import json
 import re
-from typing import List
+from typing import List, Optional, Dict, Any
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 
@@ -33,8 +37,9 @@ class AIFallbackScraper(BaseScraper):
         
         try:
             genai.configure(api_key=config.GEMINI_API_KEY)
-            # Use gemini-1.5-flash model (removed -8b suffix which might be invalid/deprecated)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            # Use gemini-2.5-flash - latest stable flash model
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            logger.info("Configured Gemini AI with gemini-2.5-flash model")
         except Exception as e:
             logger.error(f"Failed to configure Gemini AI: {e}")
             self.model = None
@@ -42,6 +47,156 @@ class AIFallbackScraper(BaseScraper):
     def can_handle(self, html: str, url: str) -> bool:
         """AI fallback can handle any website if AI is configured."""
         return self.model is not None
+    
+    def analyze_structure(self, html: str, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Analyze HTML structure and suggest extraction strategy.
+        
+        This method uses AI to identify patterns in the HTML and suggest
+        CSS selectors and extraction approaches without extracting the data itself.
+        
+        Args:
+            html: HTML content to analyze
+            url: URL of the page
+            
+        Returns:
+            Dictionary containing extraction strategy, or None if analysis fails
+            
+        Strategy format:
+        {
+            "strategy_type": "css_selectors" | "table" | "json_ld" | "schema_org",
+            "container_selector": "CSS selector for dealership containers",
+            "name_selector": "CSS selector for name (relative to container)",
+            "address_selector": "CSS selector for address",
+            "city_selector": "CSS selector for city", 
+            "state_selector": "CSS selector for state",
+            "zip_selector": "CSS selector for ZIP",
+            "phone_selector": "CSS selector for phone",
+            "website_selector": "CSS selector for website",
+            "confidence": 0.0-1.0,
+            "notes": "Additional extraction hints"
+        }
+        """
+        if not self.model:
+            logger.warning("AI model not configured, cannot analyze structure")
+            return None
+        
+        try:
+            logger.info(f"Analyzing HTML structure for {url}")
+            
+            # Prepare HTML sample for analysis
+            html_sample = self._prepare_html_for_structure_analysis(html)
+            
+            # Create structure analysis prompt
+            prompt = self._create_structure_analysis_prompt(html_sample, url)
+            
+            # Get AI response
+            response = self.model.generate_content(prompt)
+            response_text = response.text.strip()
+            
+            # Parse strategy from response
+            strategy = self._parse_strategy_response(response_text)
+            
+            if strategy:
+                confidence = strategy.get('confidence', 0.0)
+                logger.info(f"AI suggested strategy for {url} "
+                          f"(confidence: {confidence:.2f})")
+                return strategy
+            else:
+                logger.warning(f"AI could not determine strategy for {url}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Structure analysis failed for {url}: {e}")
+            return None
+    
+    def _prepare_html_for_structure_analysis(self, html: str) -> str:
+        """
+        Prepare HTML sample for structure analysis.
+        
+        For structure analysis, we want a representative sample that shows
+        the pattern without being too large.
+        """
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Remove noise
+        for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'iframe']):
+            tag.decompose()
+        
+        # Get a focused sample (first 10000 chars should be enough to see patterns)
+        clean_html = str(soup)[:10000]
+        return clean_html
+    
+    def _create_structure_analysis_prompt(self, html: str, url: str) -> str:
+        """Create prompt for AI structure analysis."""
+        dealer_name = self._extract_dealer_name_from_url(url)
+        
+        return f"""
+You are analyzing a dealership location page for {dealer_name} ({url}).
+
+Your task is to identify the HTML structure and suggest CSS selectors for extracting dealership data.
+DO NOT extract the actual data - just identify the patterns.
+
+Analyze the HTML and return a JSON object with this exact structure:
+{{
+  "strategy_type": "css_selectors",
+  "container_selector": "CSS selector that identifies each dealership container (e.g., 'div.dealer-card', 'li.location', 'tr')",
+  "name_selector": "CSS selector for dealership name (relative to container, e.g., 'h3.name', 'a.dealer-link')",
+  "address_selector": "CSS selector for street address (or use 'combined' if address is in one element)",
+  "city_selector": "CSS selector for city (or 'combined' if part of address)",
+  "state_selector": "CSS selector for state (or 'combined' if part of address)",
+  "zip_selector": "CSS selector for ZIP code (or 'combined' if part of address)",
+  "phone_selector": "CSS selector for phone number (e.g., 'a[href^=\"tel:\"]', 'span.phone')",
+  "website_selector": "CSS selector for website link (e.g., 'a.website', 'a.visit-site')",
+  "confidence": 0.85,
+  "notes": "Brief notes about the structure (e.g., 'addresses are combined in one element', 'phone in tel: link')"
+}}
+
+Look for:
+1. Repeated container patterns (multiple divs/lis/trs with similar structure)
+2. Common class names like: location, dealer, store, card, listing, etc.
+3. Schema.org microdata or JSON-LD
+4. Structured address elements vs combined addresses
+
+Return ONLY valid JSON. No explanations before or after.
+
+HTML sample:
+{html}
+"""
+    
+    def _parse_strategy_response(self, response_text: str) -> Optional[Dict[str, Any]]:
+        """Parse AI strategy response."""
+        # Clean markdown formatting
+        if response_text.startswith('```json'):
+            response_text = response_text[7:-3]
+        elif response_text.startswith('```'):
+            response_text = response_text[3:-3]
+        
+        response_text = response_text.strip()
+        
+        try:
+            strategy = json.loads(response_text)
+            
+            # Validate required fields
+            required_fields = ['strategy_type', 'container_selector', 'confidence']
+            if not all(field in strategy for field in required_fields):
+                logger.warning(f"Strategy missing required fields: {strategy}")
+                return None
+            
+            # Ensure confidence is a float between 0 and 1
+            try:
+                strategy['confidence'] = float(strategy.get('confidence', 0.0))
+                strategy['confidence'] = max(0.0, min(1.0, strategy['confidence']))
+            except (ValueError, TypeError):
+                strategy['confidence'] = 0.5
+            
+            logger.debug(f"Parsed strategy: {strategy}")
+            return strategy
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse strategy response as JSON: {e}")
+            logger.debug(f"Response was: {response_text[:500]}")
+            return None
     
     def extract(self, html: str, url: str) -> List[DealershipData]:
         """Extract dealership data using AI analysis."""
