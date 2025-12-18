@@ -73,6 +73,30 @@ If you need to hire a developer to maintain/extend this:
 
 ---
 
+## 📊 Visual Diagrams & Architecture
+
+### 🔄 How the App Works - Complete Visual Flow
+
+This diagram shows the complete user journey from entering data to downloading results:
+
+[See VISUAL_DIAGRAMS.md for complete detailed diagrams including:
+- User Interaction Flow
+- System Architecture Component View  
+- Data Flow (6-step detailed process)
+- Deployment Flow
+- File Structure Visual Tree
+- Component Interaction Map]
+
+**Quick Reference:** The app follows these 6 main steps:
+1. **User Input** → Enter dealer name & URL
+2. **Fetch Webpage** → Download HTML (with fallback to browser)
+3. **Select Strategy** → Match URL to extraction method
+4. **Extract Data** → Parse HTML for dealership info
+5. **Clean Data** → Remove duplicates, validate, parse addresses
+6. **Export** → Create Excel file for download
+
+---
+
 ## 🌐 Where Everything Lives
 
 ### Live Application
