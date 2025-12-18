@@ -37,7 +37,7 @@ class StreamlitUI:
         """Configure Streamlit page settings."""
         st.set_page_config(
             page_title=config.ui.page_title,
-            page_icon="🚗",
+            page_icon="📊",
             layout=config.ui.layout,
             initial_sidebar_state="collapsed"
         )
@@ -89,37 +89,17 @@ class StreamlitUI:
             except Exception as e:
                 logger.warning(f"Failed to load logo: {e}")
         
-        st.title("🚗 Dealer Location Scraper")
-        st.markdown("**Professional automotive dealership data extraction platform**")
-        
-        # Features overview
-        with st.expander("ℹ️ Features & Capabilities"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("""
-                **Scraping Features:**
-                - 🤖 AI-Powered fallback extraction
-                - 🎯 15+ pre-built dealer patterns
-                - 🔄 Automatic retry with Playwright
-                - 📍 Sitemap crawling support
-                """)
-            with col2:
-                st.markdown("""
-                **Data Quality:**
-                - ✅ Address validation & parsing
-                - 🔍 Duplicate detection
-                - 🏷️ Automatic brand classification
-                - 📊 Multiple export formats
-                """)
+        st.title("Dealer Location Scraper")
+        st.markdown("Professional automotive dealership data extraction platform")
     
-    def render_input_form(self) -> Tuple[str, str, int, bool]:
+    def render_input_form(self) -> Tuple[str, str]:
         """
         Render the main input form.
         
         Returns:
-            Tuple of (dealer_name, url, max_dealerships, use_ai_fallback)
+            Tuple of (dealer_name, url)
         """
-        st.markdown("### 📝 Extraction Parameters")
+        st.markdown("### Extraction Parameters")
         
         col1, col2 = st.columns(2)
         
@@ -137,25 +117,7 @@ class StreamlitUI:
                 help="URL of the page containing dealership locations"
             )
         
-        # Advanced options
-        with st.expander("⚙️ Advanced Options"):
-            col1, col2 = st.columns(2)
-            with col1:
-                max_dealerships = st.number_input(
-                    "Max Dealerships",
-                    min_value=1,
-                    max_value=5000,
-                    value=config.data.max_dealers,
-                    help="Maximum number of dealerships to extract"
-                )
-            with col2:
-                use_ai_fallback = st.checkbox(
-                    "Enable AI Fallback",
-                    value=True,
-                    help="Use Gemini AI when standard patterns don't work"
-                )
-        
-        return dealer_name, url, max_dealerships, use_ai_fallback
+        return dealer_name, url
     
     def validate_inputs(self, dealer_name: str, url: str) -> Optional[str]:
         """
@@ -165,13 +127,13 @@ class StreamlitUI:
             Error message if validation fails, None otherwise
         """
         if not dealer_name.strip():
-            return "⚠️ Please enter a dealer group name"
+            return "Please enter a dealer group name"
         
         if not url.strip():
-            return "⚠️ Please enter a locations page URL"
+            return "Please enter a locations page URL"
         
         if not url.startswith(('http://', 'https://')):
-            return "⚠️ URL must start with http:// or https://"
+            return "URL must start with http:// or https://"
         
         return None
     
@@ -203,7 +165,7 @@ class StreamlitUI:
         
         try:
             # Perform scraping
-            update_progress(10, "🔍 Initializing scraper...")
+            update_progress(10, "Initializing scraper...")
             result = self.scraper_service.scrape_dealer_locations(
                 dealer_name,
                 url,
@@ -211,14 +173,14 @@ class StreamlitUI:
             )
             
             if not result.success:
-                st.error(f"❌ {result.message}")
+                st.error(f"{result.message}")
                 if result.error:
                     with st.expander("Error Details"):
                         st.code(result.error)
                 return None
             
             # Process data into DataFrame
-            update_progress(95, "📊 Formatting data...")
+            update_progress(95, "Formatting data...")
             df = self.data_service.create_dataframe(result.dealers)
             
             # Final deduplication at UI level (safety measure)
@@ -241,11 +203,11 @@ class StreamlitUI:
             return df
             
         except DealerScraperError as e:
-            st.error(f"❌ Scraping error: {e}")
+            st.error(f"Scraping error: {e}")
             logger.error(f"Scraping failed: {e}", exc_info=True)
             return None
         except Exception as e:
-            st.error(f"❌ Unexpected error: {e}")
+            st.error(f"Unexpected error: {e}")
             logger.error(f"Unexpected error during scraping: {e}", exc_info=True)
             return None
         finally:
@@ -261,14 +223,14 @@ class StreamlitUI:
             dealer_name: Name of dealer group
         """
         if df.empty:
-            st.error("❌ No dealerships found. Please check the URL and try again.")
+            st.error("No dealerships found. Please check the URL and try again.")
             return
         
         # Success message
-        st.success(f"✅ Successfully extracted {len(df)} dealerships!")
+        st.success(f"Successfully extracted {len(df)} dealerships!")
         
         # Metrics
-        st.markdown("### 📊 Extraction Summary")
+        st.markdown("### Extraction Summary")
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -298,18 +260,18 @@ class StreamlitUI:
                 st.metric("Countries", "N/A")
         
         # Data preview
-        st.markdown("### 📋 Extracted Data")
+        st.markdown("### Extracted Data")
         st.dataframe(df, use_container_width=True, height=400)
         
         # Download options
-        st.markdown("### 📥 Download Options")
+        st.markdown("### Download Options")
         col1, col2, col3 = st.columns(3)
         
         with col1:
             # Excel download
             excel_buffer = self._create_excel_file(df)
             st.download_button(
-                label="📄 Download Excel",
+                label="Download Excel",
                 data=excel_buffer,
                 file_name=f"{dealer_name.replace(' ', '_')}_dealerships.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -320,7 +282,7 @@ class StreamlitUI:
             # CSV download
             csv_data = df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📑 Download CSV",
+                label="Download CSV",
                 data=csv_data,
                 file_name=f"{dealer_name.replace(' ', '_')}_dealerships.csv",
                 mime="text/csv",
@@ -331,7 +293,7 @@ class StreamlitUI:
             # JSON download
             json_data = df.to_json(orient='records', indent=2)
             st.download_button(
-                label="📦 Download JSON",
+                label="Download JSON",
                 data=json_data,
                 file_name=f"{dealer_name.replace(' ', '_')}_dealerships.json",
                 mime="application/json",
@@ -388,15 +350,15 @@ class StreamlitUI:
             try:
                 config.validate()
             except ConfigurationError as e:
-                st.error(f"❌ Configuration Error: {e}")
-                st.info("💡 Please set GEMINI_API_KEY in your .env file or environment variables")
+                st.error(f"Configuration Error: {e}")
+                st.info("Please set GEMINI_API_KEY in your .env file or environment variables")
                 st.stop()
             
             # Render UI components
             self.render_header()
             
             # Main form
-            dealer_name, url, max_dealerships, use_ai_fallback = self.render_input_form()
+            dealer_name, url = self.render_input_form()
             
             # Validation
             validation_error = self.validate_inputs(dealer_name, url)
@@ -404,7 +366,7 @@ class StreamlitUI:
                 st.warning(validation_error)
             
             # Extract button
-            if st.button("🚀 Extract Dealerships", type="primary", disabled=bool(validation_error)):
+            if st.button("Extract Dealerships", type="primary", disabled=bool(validation_error)):
                 df = self.perform_scraping(dealer_name, url)
                 if df is not None:
                     st.session_state.last_result = (df, dealer_name)
@@ -418,7 +380,7 @@ class StreamlitUI:
             self.render_footer()
             
         except Exception as e:
-            st.error(f"❌ Application error: {e}")
+            st.error(f"Application error: {e}")
             logger.error(f"Application error: {e}", exc_info=True)
 
 
