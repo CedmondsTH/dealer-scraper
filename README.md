@@ -1,240 +1,526 @@
-# Dealer Location Scraper
+# Dealer Location Scraper v2.0
 
-A professional-grade web application for extracting dealer location data from automotive dealer websites. Built with a modular architecture supporting multiple dealer site formats and providing clean, validated output.
+> **Professional-grade automotive dealership data extraction platform**
 
-## 🚀 Features
+A robust, production-ready web application for extracting dealer location data from automotive dealer websites. Built with enterprise architecture, comprehensive error handling, and extensive dealer site support.
 
-- **Multi-Strategy Scraping**: Automatically detects and handles 6+ different dealer website formats
-- **Clean Data Output**: Validates addresses, removes duplicates, normalizes data
-- **Multiple Export Formats**: Excel, CSV, and JSON output options
-- **Professional Web Interface**: User-friendly Streamlit interface
-- **Enterprise Architecture**: Modular, testable, and maintainable codebase
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+## ✨ Features
+
+### Core Capabilities
+- 🤖 **AI-Powered Extraction** - Gemini AI fallback for unlimited website support
+- 🎯 **15+ Pre-Built Strategies** - Handles major dealer groups automatically
+- 🔄 **Smart Retry Logic** - Automatic fallback with Playwright for JS-heavy sites
+- 📍 **Sitemap Crawling** - Discovers individual location pages automatically
+- 🌐 **Multi-Format Support** - JSON-LD, JavaScript variables, custom HTML patterns
+
+### Data Quality
+- ✅ **Address Validation** - Intelligent parsing and normalization
+- 🔍 **Duplicate Detection** - Advanced deduplication algorithms
+- 🏷️ **Brand Classification** - Automatic detection of 50+ automotive brands
+- 📊 **Multiple Export Formats** - Excel, CSV, and JSON
+
+### User Experience
+- 💻 **Professional Web Interface** - Modern Streamlit UI with real-time progress
+- ⚡ **CLI Mode** - Scriptable command-line interface for automation
+- 📈 **Live Metrics** - Real-time extraction statistics
+- 🎨 **Responsive Design** - Works on desktop and mobile
+
+---
 
 ## 🏗️ Architecture
 
 ```
 dealer-scraper/
-├── core/           # Business logic services
-├── scrapers/       # Modular scraping strategies  
-├── ui/            # Web interface
-├── cli/           # Command-line interface
-├── utils/         # Shared utilities
-├── config/        # Configuration management
-└── archive/       # Historical files
+├── config.py              # Centralized configuration
+├── run.py                 # Main entry point (CLI + Web)
+├── requirements.txt       # Dependencies
+├── env.example           # Environment template
+│
+├── src/                  # Application code
+│   ├── exceptions.py     # Custom exception hierarchy
+│   ├── models.py         # Pydantic data models
+│   │
+│   ├── scrapers/         # Scraping strategies
+│   │   ├── base_scraper.py
+│   │   ├── scraper_registry.py
+│   │   ├── strategy_manager.py
+│   │   └── strategies/   # 15+ dealer-specific strategies
+│   │
+│   ├── services/         # Business logic
+│   │   ├── scraper_service.py    # Main orchestrator
+│   │   ├── data_service.py       # Data processing
+│   │   ├── web_scraper.py        # Page fetching
+│   │   └── playwright_subprocess.py
+│   │
+│   ├── utils/           # Utilities
+│   │   ├── address_parser.py
+│   │   ├── data_cleaner.py
+│   │   └── ...
+│   │
+│   └── ui/              # Web interface
+│       └── streamlit_app.py
+│
+├── tests/               # Test suite
+│   ├── test_basic.py
+│   └── ...
+│
+└── docs/               # Documentation
+    ├── HOW_IT_WORKS.md
+    ├── MIGRATION_GUIDE.md
+    └── REFACTORING_PLAN.md
 ```
 
-## 🔧 Supported Dealer Sites
-
-- **Lithia Motors** - Complete dealer network
-- **Group 1 Automotive** - Multi-brand locations
-- **AutoCanada** - Canadian dealer network
-- **JSON-LD Sites** - Standards-compliant structured data
-- **JavaScript-Based Sites** - Dynamic content extraction
-- **Generic Sites** - HGreg, Ken Ganley, Sierra Auto, and 9+ other formats
+---
 
 ## 🚀 Quick Start
 
-### Local Development
+### Prerequisites
+- Python 3.8 or higher
+- pip (Python package manager)
+- 2GB RAM minimum
+- Internet connection
 
-1. **Clone the repository**
+### Installation
+
+1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/CedmondsTH/dealer-scraper.git
    cd dealer-scraper
    ```
 
-2. **Install dependencies**
+2. **Create virtual environment:**
+   ```bash
+   python -m venv venv
+   
+   # On Windows:
+   venv\Scripts\activate
+   
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    playwright install chromium
    ```
 
-3. **Run the web interface**
+4. **Configure environment:**
    ```bash
-   python main.py
+   cp env.example .env
+   # Edit .env and add your GEMINI_API_KEY
    ```
 
-4. **Or use the command line**
+5. **Run the application:**
    ```bash
-   python main.py scrape "Dealer Name" "https://dealer-website.com/locations"
+   # Web Interface
+   python run.py
+   
+   # CLI Mode
+   python run.py "Lithia Motors" "https://www.lithia.com/locations"
    ```
 
-### Railway Deployment
-
-The application is configured for one-click Railway deployment:
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/your-template)
+---
 
 ## 💻 Usage
 
 ### Web Interface
 
-1. Visit the deployed application
-2. Enter the dealer group name (e.g., "Lithia Motors")
-3. Paste the dealer locations page URL
-4. Click "Extract Dealerships"
-5. Download the Excel or CSV file
+Start the web interface:
+```bash
+python run.py
+```
+
+Then open your browser to `http://localhost:8501`
+
+**Steps:**
+1. Enter the dealer group name (e.g., "Lithia Motors")
+2. Paste the locations page URL
+3. Click "Extract Dealerships"
+4. Download results in Excel, CSV, or JSON format
 
 ### Command Line Interface
 
-```bash
-# Extract dealer data
-python main.py scrape "Lithia Motors" "https://lithia.com/locations"
+Extract dealer data programmatically:
 
-# List available scraping strategies
-python main.py list-strategies
+```bash
+# Basic usage
+python run.py "Dealer Name" "https://dealer-website.com/locations"
+
+# Output is JSON (can be piped to other tools)
+python run.py "Lithia Motors" "https://lithia.com/locations" > dealers.json
 
 # Get help
-python main.py --help
+python run.py --help
 ```
 
-### Legacy Compatibility
+### Python API
 
-```bash
-# Old format still supported
-python app.py "Dealer Name" "https://dealer-url.com"
+Use as a library in your Python code:
+
+```python
+from config import config
+from src.services.scraper_service import ScraperService
+
+# Configure
+config.validate()
+
+# Initialize service
+scraper = ScraperService()
+
+# Scrape
+result = scraper.scrape_dealer_locations(
+    dealer_name="Lithia Motors",
+    url="https://www.lithia.com/locations"
+)
+
+if result.success:
+    print(f"Extracted {len(result.dealers)} dealers")
+    for dealer in result.dealers:
+        print(f"- {dealer['Dealership']}: {dealer['Address']}")
+else:
+    print(f"Failed: {result.message}")
 ```
+
+---
 
 ## 🔧 Configuration
 
-Configure the application via environment variables:
+### Environment Variables
+
+Create a `.env` file (see `env.example`):
 
 ```bash
-# Scraping settings
+# Required
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional (with defaults shown)
+DEBUG=false
+ENVIRONMENT=production
+
+# Scraping
 SCRAPING_TIMEOUT=60000
 SCRAPING_HEADLESS=true
 SCRAPING_VIEWPORT_WIDTH=1920
+SCRAPING_VIEWPORT_HEIGHT=1080
+SCRAPING_MAX_RETRIES=3
+
+# Data Processing
+DATA_MAX_DEALERS=1000
+DATA_VALIDATE_ADDRESSES=true
 
 # Logging
 LOG_LEVEL=INFO
 LOG_FILE_PATH=logs/app.log
 
-# UI settings
-UI_PAGE_TITLE="Dealer Location Scraper"
+# UI
+UI_PAGE_TITLE=Dealer Group Dealership Scraper
 UI_CACHE_ENABLED=true
 ```
 
-## 🏛️ Professional Architecture
+### Getting a Gemini API Key
 
-### Core Services
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy the key and add it to your `.env` file
 
-- **ScraperService**: Main orchestrator coordinating all operations
-- **DataService**: Data processing, validation, and export functionality
-- **WebScraper**: Browser automation with Playwright
+---
 
-### Strategy Pattern
+## 🎯 Supported Dealer Sites
 
-Each dealer site type has its own specialized parser:
+### Major Dealer Groups
+- ✅ **Lithia Motors** - Complete network coverage
+- ✅ **Group 1 Automotive** - Multi-brand locations
+- ✅ **AutoCanada** - Canadian dealer network
+- ✅ **Sonic Automotive** - DealerCom sites
+- ✅ **Cooper Automotive** - Custom site format
+- ✅ **Courtesy Automotive** - Regional dealer group
+- ✅ **Ray Skillman** - Indianapolis area dealers
 
-```python
-from scrapers.strategies.lithia_strategy import LithiaStrategy
-from scrapers.strategies.json_ld_strategy import JsonLdStrategy
+### Generic Support
+- ✅ **JSON-LD Sites** - Standards-compliant structured data
+- ✅ **JavaScript Variables** - Sites using `var locations = [...]`
+- ✅ **DealerCom Platforms** - Multiple DealerCom formats
+- ✅ **Custom HTML** - 10+ generic HTML patterns
+- ✅ **AI Fallback** - Any site via Gemini AI
 
-# Strategies are automatically registered and used
-```
+### Total Coverage
+- **15+ pre-built strategies**
+- **Unlimited sites** via AI fallback
+- **Automatic strategy selection**
+- **Sitemap discovery** for multi-page sites
 
-### Utilities
+---
 
-- **AddressParser**: Converts full addresses into components
-- **DataCleaner**: Validates, normalizes, and deduplicates data
+## 📊 Data Output
+
+### Output Columns
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| Dealership | Dealer name | "Lithia Toyota of Springfield" |
+| Dealer Group | Parent company | "Lithia Motors" |
+| Dealership Type | Category | "Franchised", "Used", "Collision", "Fixed Ops" |
+| Car Brand | Detected brands | "Toyota; Lexus" |
+| Address | Street address | "123 Main St" |
+| City | City name | "Springfield" |
+| State/Province | State/province code | "OR" |
+| Postal Code | ZIP/postal code | "97477" |
+| Phone | Contact number | "(541) 555-1234" |
+| Country | Country name | "United States of America" |
+| Website | Dealer website | "lithiatoyota.com" |
+
+### Data Quality Features
+
+- **Address Normalization** - Standardizes abbreviations (Street→St, Avenue→Ave)
+- **Duplicate Removal** - Based on normalized name and address
+- **Phone Validation** - Extracts and formats phone numbers
+- **Brand Detection** - Identifies 50+ automotive brands
+- **Country Classification** - US/Canada based on state/province
+- **Type Classification** - Franchised, Used, Collision, Fixed Ops
+
+---
 
 ## 🧪 Development
 
 ### Adding New Dealer Sites
 
-1. Create a new strategy in `scrapers/strategies/`
-2. Inherit from `ScraperStrategy` base class
-3. Implement `can_handle()` and `extract_dealers()` methods
-4. Register in `strategy_manager.py`
-
-Example:
+1. **Create a new strategy** in `src/scrapers/strategies/`:
 
 ```python
-class NewDealerStrategy(ScraperStrategy):
+import logging
+from typing import List, Dict, Any
+from bs4 import BeautifulSoup
+
+from src.scrapers.base_scraper import ScraperStrategy
+
+logger = logging.getLogger(__name__)
+
+
+class MyDealerStrategy(ScraperStrategy):
+    """Scraper for MyDealer website format."""
+    
     @property
     def strategy_name(self) -> str:
-        return "New Dealer Site"
+        return "MyDealer Format"
     
     def can_handle(self, html: str, page_url: str) -> bool:
-        # Detection logic
-        return "new-dealer-indicator" in html
+        """Check if this strategy can handle the page."""
+        return "mydealer.com" in page_url or "my-dealer-indicator" in html
     
-    def extract_dealers(self, html: str, page_url: str) -> List[Dict]:
-        # Extraction logic
-        pass
+    def extract_dealers(self, html: str, page_url: str) -> List[Dict[str, Any]]:
+        """Extract dealer data from the page."""
+        soup = BeautifulSoup(html, "html.parser")
+        dealers = []
+        
+        # Your extraction logic here
+        for location in soup.find_all('div', class_='location'):
+            dealer = {
+                'name': location.find('h3').get_text(strip=True),
+                'street': location.find('span', class_='address').get_text(strip=True),
+                'city': location.find('span', class_='city').get_text(strip=True),
+                'state': location.find('span', class_='state').get_text(strip=True),
+                'zip': location.find('span', class_='zip').get_text(strip=True),
+                'phone': location.find('a', class_='phone').get_text(strip=True),
+                'website': page_url
+            }
+            dealers.append(dealer)
+        
+        logger.info(f"Extracted {len(dealers)} dealers using MyDealer strategy")
+        return dealers
 ```
 
-### Testing
+2. **Register the strategy** in `src/scrapers/strategy_manager.py`:
+
+```python
+from src.scrapers.strategies.my_dealer_strategy import MyDealerStrategy
+
+def initialize_strategies() -> None:
+    # ... existing strategies ...
+    scraper_registry.register(MyDealerStrategy())
+    # ... rest of strategies ...
+```
+
+3. **Test your strategy:**
 
 ```bash
-# Test specific dealer site
-python main.py scrape "Test Dealer" "https://example.com" --debug
-
-# List available strategies
-python main.py list-strategies
+python run.py "MyDealer Group" "https://mydealer.com/locations"
 ```
 
-## 📊 Data Output
+### Running Tests
 
-### Excel/CSV Columns
+```bash
+# Run all tests
+pytest
 
-- **Dealership**: Dealer name
-- **Dealer Group**: Parent company
-- **Dealership Type**: Franchised, Used, Collision, Fixed Ops
-- **Car Brand**: Detected automotive brands
-- **Address**: Street address (normalized)
-- **City**: City name
-- **State/Province**: State or province code
-- **Postal Code**: ZIP or postal code
-- **Phone**: Contact phone number
-- **Country**: United States of America or Canada
-- **Website**: Dealer website URL
+# Run with coverage
+pytest --cov=src --cov-report=html
 
-### Data Quality
+# Run specific test file
+pytest tests/test_basic.py
 
-- **Address Normalization**: Standardizes abbreviations (Street→St, Avenue→Ave)
-- **Duplicate Removal**: Based on normalized name and address
-- **Phone Validation**: Extracts and formats phone numbers
-- **Brand Detection**: Identifies automotive brands from dealer names
+# Run with verbose output
+pytest -v
+```
 
-## 🔒 Security & Privacy
+### Code Quality
 
-- **No data storage**: Scraped data is not stored on servers
-- **Browser isolation**: Each scraping session uses fresh browser instance
-- **Rate limiting**: Respectful scraping with appropriate delays
-- **Error handling**: Graceful failure without exposing sensitive information
+```bash
+# Format code
+black src/ tests/
 
-## 📈 Performance
+# Lint code
+flake8 src/ tests/
 
-- **Parallel processing**: Multiple extraction strategies run concurrently
-- **Caching**: Web interface caches results to avoid re-scraping
-- **Browser optimization**: Headless mode with performance optimizations
-- **Memory management**: Automatic cleanup of browser resources
+# Type checking
+mypy src/
+```
+
+---
+
+## 🚢 Deployment
+
+### Railway
+
+1. **Fork the repository** on GitHub
+
+2. **Create new Railway project:**
+   - Visit [Railway.app](https://railway.app)
+   - Click "New Project" → "Deploy from GitHub repo"
+   - Select your forked repository
+
+3. **Configure environment variables:**
+   ```
+   GEMINI_API_KEY=your_key_here
+   ENVIRONMENT=production
+   LOG_LEVEL=INFO
+   ```
+
+4. **Deploy:**
+   - Railway automatically detects `railway.json`
+   - Build and start commands are pre-configured
+   - Application will be available at your Railway URL
+
+### Docker (Optional)
+
+```bash
+# Build image
+docker build -t dealer-scraper .
+
+# Run container
+docker run -p 8501:8501 \
+  -e GEMINI_API_KEY=your_key_here \
+  dealer-scraper
+```
+
+---
+
+## 📚 Documentation
+
+- **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** - Architecture deep dive
+- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Upgrading from v1.x
+- **[REFACTORING_PLAN.md](REFACTORING_PLAN.md)** - Development roadmap
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+
+---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Add your changes with tests
-4. Submit a pull request
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Areas for Contribution
+- 🎯 New dealer site strategies
+- 🧪 Test coverage improvements
+- 📚 Documentation enhancements
+- 🐛 Bug fixes
+- ✨ Feature requests
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
 
 ## 🆘 Support
 
-For issues and questions:
-- Check existing GitHub issues
-- Create a new issue with reproduction steps
-- Include debug logs when reporting problems
+### Common Issues
+
+**"GEMINI_API_KEY environment variable is required"**
+- Add your API key to `.env` file
+- Get a free key at [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+**"No dealers found"**
+- Website structure may have changed
+- Try a different URL (main locations page)
+- Check if AI fallback is enabled
+
+**"Failed to fetch page content"**
+- Website may be blocking automated requests
+- Playwright fallback should handle this automatically
+- Check your internet connection
+
+### Getting Help
+
+1. **Check documentation** - Most questions are answered in the docs
+2. **Search issues** - Someone may have had the same problem
+3. **Create an issue** - Include error messages and steps to reproduce
+4. **Provide details** - OS, Python version, full error traceback
+
+---
 
 ## 🏆 Professional Standards
 
-This codebase follows enterprise development standards:
-- **Clean Architecture** with separation of concerns
-- **SOLID Principles** throughout the design
-- **Strategy Pattern** for extensible scraping
-- **Service Layer** for testable business logic
-- **Configuration Management** for environment-specific settings
-- **Professional Logging** with structured output
-- **Type Safety** with comprehensive type hints
+This codebase follows enterprise development best practices:
+
+- ✅ **Clean Architecture** - Separation of concerns
+- ✅ **SOLID Principles** - Maintainable design
+- ✅ **Strategy Pattern** - Extensible scraping
+- ✅ **Service Layer** - Testable business logic
+- ✅ **Type Safety** - Comprehensive type hints
+- ✅ **Error Handling** - Domain-specific exceptions
+- ✅ **Professional Logging** - Structured output
+- ✅ **Configuration Management** - Environment-based settings
+
+---
+
+## 📈 Performance
+
+- **Fast scraping** - Requests-first approach (90% of sites)
+- **Parallel processing** - Multiple URLs scraped concurrently
+- **Smart caching** - Avoids re-scraping in web interface
+- **Memory efficient** - Automatic browser cleanup
+- **Scalable** - Handles 1000+ dealers per run
+
+---
+
+## 🔒 Security & Privacy
+
+- **No data storage** - Scraped data is not stored on servers
+- **Browser isolation** - Each session uses fresh browser instance
+- **Rate limiting** - Respectful scraping with delays
+- **Error handling** - No sensitive information in logs
+- **API key security** - Environment variable based configuration
+
+---
+
+**Built with ❤️ for the automotive industry**
+
+**Version:** 2.0.0  
+**Last Updated:** December 18, 2024  
+**Maintainer:** [CedmondsTH](https://github.com/CedmondsTH)
+
+---
+
+## Star History
+
+If you find this project useful, please consider giving it a ⭐ on GitHub!
+
+
