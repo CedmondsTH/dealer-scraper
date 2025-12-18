@@ -21,6 +21,7 @@ from src.scrapers.strategies.dealercom_content_blocks_strategy import DealerDotC
 from src.scrapers.strategies.cooper_auto_strategy import CooperAutoStrategy
 from src.scrapers.strategies.courtesy_automotive_strategy import CourtesyAutomotiveStrategy
 from src.scrapers.strategies.ray_skillman_strategy import RaySkillmanStrategy
+from src.scrapers.strategies.hudson_automotive_strategy import HudsonAutomotiveStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def initialize_strategies() -> None:
     scraper_registry.register(LithiaStrategy())
     scraper_registry.register(Group1AutomotiveStrategy())
     scraper_registry.register(AutoCanadaStrategy())
+    scraper_registry.register(HudsonAutomotiveStrategy())  # Hudson-specific strategy
     scraper_registry.register(DealerDotComLocationsStrategy())
     scraper_registry.register(DealerDotComContentBlocksStrategy())
     scraper_registry.register(LearnedRuleExtractorStrategy())

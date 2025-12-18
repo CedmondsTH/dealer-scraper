@@ -228,14 +228,22 @@ class DataCleaner:
         for dealer in dealers:
             name_norm = normalize_for_comparison(dealer.get('name', ''))
             street_norm = normalize_for_comparison(dealer.get('street', ''))
+            city_norm = normalize_for_comparison(dealer.get('city', ''))
             
+            # Create a more robust deduplication key
             if name_norm and street_norm:
-                key = (name_norm, street_norm)
+                key = (name_norm, street_norm, city_norm)
+                if key not in seen_keys:
+                    unique_dealers.append(dealer)
+                    seen_keys.add(key)
+            elif name_norm and city_norm:
+                # Fallback to name + city if no street
+                key = (name_norm, '', city_norm)
                 if key not in seen_keys:
                     unique_dealers.append(dealer)
                     seen_keys.add(key)
             else:
-                # Keep entries missing name or street (they'll be filtered later)
+                # Keep entries missing name or key fields (they'll be filtered later)
                 unique_dealers.append(dealer)
         
         return unique_dealers

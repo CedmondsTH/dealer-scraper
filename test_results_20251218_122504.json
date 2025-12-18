@@ -1,0 +1,108 @@
+{
+  "test_date": "2025-12-18T12:25:04.176101",
+  "total_groups_tested": 9,
+  "successful": 8,
+  "total_dealers": 1343,
+  "total_duplicates": 319,
+  "results": [
+    {
+      "name": "Lithia Motors",
+      "url": "https://www.lithia.com/locations/store-locations.htm",
+      "status": "success",
+      "success": true,
+      "total_dealers": 636,
+      "duplicates_found": 319,
+      "message": "Successfully extracted 636 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:22:55.482494"
+    },
+    {
+      "name": "Group 1 Automotive",
+      "url": "https://www.group1auto.com/dealer-locations/",
+      "status": "success",
+      "success": true,
+      "total_dealers": 154,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 154 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:23:17.498749"
+    },
+    {
+      "name": "Ken Garff",
+      "url": "https://www.kengarff.com/contact-us/",
+      "status": "success",
+      "success": true,
+      "total_dealers": 63,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 63 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:23:30.286316"
+    },
+    {
+      "name": "Ken Ganley",
+      "url": "https://www.kenganleyauto.com/locations.html",
+      "status": "success",
+      "success": true,
+      "total_dealers": 56,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 56 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:23:34.384573"
+    },
+    {
+      "name": "AutoCanada",
+      "url": "https://www.autocan.ca/dealerships/",
+      "status": "success",
+      "success": true,
+      "total_dealers": 70,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 70 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:23:57.079057"
+    },
+    {
+      "name": "Sonic Automotive",
+      "url": "https://www.sonicautomotive.com/locations/index.htm",
+      "status": "success",
+      "success": true,
+      "total_dealers": 138,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 138 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:24:10.888681"
+    },
+    {
+      "name": "Hudson Automotive",
+      "url": "https://hudsonauto.com/locations",
+      "status": "no_data",
+      "success": false,
+      "total_dealers": 0,
+      "duplicates_found": 0,
+      "message": "No valid dealer locations found",
+      "error": null,
+      "timestamp": "2025-12-18T12:24:38.681822"
+    },
+    {
+      "name": "Holman Automotive",
+      "url": "https://www.holmanauto.com/holman-locations/",
+      "status": "success",
+      "success": true,
+      "total_dealers": 1,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 1 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:24:56.781979"
+    },
+    {
+      "name": "Asbury Automotive",
+      "url": "https://www.asburyauto.com/locations",
+      "status": "success",
+      "success": true,
+      "total_dealers": 225,
+      "duplicates_found": 0,
+      "message": "Successfully extracted 225 dealer locations",
+      "error": null,
+      "timestamp": "2025-12-18T12:25:04.176101"
+    }
+  ]
+}

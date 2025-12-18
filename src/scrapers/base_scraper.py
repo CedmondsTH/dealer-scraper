@@ -70,6 +70,8 @@ class BaseScraper:
         """
         Extract dealer data using registered strategies.
         
+        Prioritizes specific strategies over generic ones to avoid duplicate extractions.
+        
         Args:
             html: Page HTML content
             page_url: URL of the page
@@ -79,18 +81,48 @@ class BaseScraper:
         """
         all_dealers = []
         
-        # Try each strategy
+        # Generic strategy names that should only run if specific strategies fail
+        generic_strategies = {
+            'Dealer.com Locations HTML',
+            'Dealer.com Content Blocks HTML',
+            'Generic Dealer HTML',
+            'JSON-LD Structured Data',
+            'JavaScript Variables',
+            'Learned Rule Extractor',
+            'Overfuel Locations HTML'
+        }
+        
+        # First, try specific (non-generic) strategies
+        specific_strategies_succeeded = False
         for strategy in self.strategies:
-            try:
-                if strategy.can_handle(html, page_url):
-                    logger.debug(f"Strategy {strategy.strategy_name} matched")
-                    dealers = strategy.extract_dealers(html, page_url)
-                    if dealers:
-                        logger.info(f"Strategy {strategy.strategy_name} extracted {len(dealers)} dealers")
-                        all_dealers.extend(dealers)
-            except Exception as e:
-                logger.error(f"Strategy {strategy.strategy_name} failed: {e}", exc_info=True)
-                continue
+            if strategy.strategy_name not in generic_strategies:
+                try:
+                    if strategy.can_handle(html, page_url):
+                        logger.debug(f"Strategy {strategy.strategy_name} matched")
+                        dealers = strategy.extract_dealers(html, page_url)
+                        if dealers:
+                            logger.info(f"Strategy {strategy.strategy_name} extracted {len(dealers)} dealers")
+                            all_dealers.extend(dealers)
+                            specific_strategies_succeeded = True
+                except Exception as e:
+                    logger.error(f"Strategy {strategy.strategy_name} failed: {e}", exc_info=True)
+                    continue
+        
+        # Only try generic strategies if no specific strategy succeeded
+        if not specific_strategies_succeeded:
+            logger.debug("No specific strategies succeeded, trying generic strategies")
+            for strategy in self.strategies:
+                if strategy.strategy_name in generic_strategies:
+                    try:
+                        if strategy.can_handle(html, page_url):
+                            logger.debug(f"Strategy {strategy.strategy_name} matched")
+                            dealers = strategy.extract_dealers(html, page_url)
+                            if dealers:
+                                logger.info(f"Strategy {strategy.strategy_name} extracted {len(dealers)} dealers")
+                                all_dealers.extend(dealers)
+                    except Exception as e:
+                        logger.error(f"Strategy {strategy.strategy_name} failed: {e}", exc_info=True)
+                        continue
         
         # Filter and deduplicate
         valid_dealers = [d for d in all_dealers if data_cleaner.is_valid_dealership(d)]

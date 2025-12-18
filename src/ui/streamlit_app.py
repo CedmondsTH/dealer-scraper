@@ -221,6 +221,16 @@ class StreamlitUI:
             update_progress(95, "📊 Formatting data...")
             df = self.data_service.create_dataframe(result.dealers)
             
+            # Final deduplication at UI level (safety measure)
+            # Drop duplicates based on dealership name, address, and city
+            dedup_cols = []
+            for col in ['Dealership', 'Address', 'City']:
+                if col in df.columns:
+                    dedup_cols.append(col)
+            
+            if dedup_cols:
+                df = df.drop_duplicates(subset=dedup_cols, keep='first')
+            
             # Cache result
             if config.ui.cache_enabled:
                 st.session_state.scrape_cache[cache_key] = df
