@@ -150,7 +150,7 @@ class Constants:
     ]
     
     # Invalid dealership names (for filtering)
-    INVALID_NAMES: Set[str] = {
+    INVALID_DEALERSHIP_NAMES: Set[str] = {
         "locations", "saved", "community news", "essential cookies",
         "sales", "service phone:", "parts phone:"
     }

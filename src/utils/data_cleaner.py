@@ -19,7 +19,7 @@ class DataCleaner:
     
     def __init__(self):
         # Names that should be filtered out as invalid dealerships
-        self.invalid_names = Constants.INVALID_NAMES
+        self.invalid_names = Constants.INVALID_DEALERSHIP_NAMES
         
         # Car brands for classification
         self.car_brands = Constants.CAR_BRANDS
