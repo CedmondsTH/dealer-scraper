@@ -335,5 +335,8 @@ data/
 *.xlsx
 *.csv
 
-# Test files (keep out of production)
-test_*.py
+# Test output files (not test source files!)
+# Note: test_*.py files are NEEDED - they're our test suite!
+# Only ignore generated test outputs:
+test_output*.txt
+test_results*.json
