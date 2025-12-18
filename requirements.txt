@@ -18,6 +18,7 @@ types-requests>=2.28.0
 
 # LLM extraction (fallback)
 google-generativeai>=0.3.0
+openai>=1.0.0
 
 # Development dependencies (install with: pip install -r requirements.txt pytest black flake8 mypy)
 # pytest>=7.0.0
