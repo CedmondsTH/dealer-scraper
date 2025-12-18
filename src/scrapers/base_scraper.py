@@ -10,10 +10,11 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup, Tag
 import re
-import sys
 
-from ..utils.address_parser import parse_address
-from ..utils.data_cleaner import data_cleaner
+from src.utils.address_parser import parse_address
+from src.utils.data_cleaner import data_cleaner
+
+logger = logging.getLogger(__name__)
 
 
 class ScraperStrategy(ABC):
@@ -58,7 +59,7 @@ class BaseScraper:
     """Base class providing common scraping utilities."""
     
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        """Initialize the base scraper."""
         self.strategies: List[ScraperStrategy] = []
     
     def register_strategy(self, strategy: ScraperStrategy) -> None:
@@ -82,21 +83,21 @@ class BaseScraper:
         for strategy in self.strategies:
             try:
                 if strategy.can_handle(html, page_url):
-                    self.logger.debug(f"Strategy {strategy.strategy_name} matched")
+                    logger.debug(f"Strategy {strategy.strategy_name} matched")
                     dealers = strategy.extract_dealers(html, page_url)
                     if dealers:
-                        self.logger.info(f"Strategy {strategy.strategy_name} extracted {len(dealers)} dealers")
+                        logger.info(f"Strategy {strategy.strategy_name} extracted {len(dealers)} dealers")
                         all_dealers.extend(dealers)
             except Exception as e:
-                self.logger.error(f"Strategy {strategy.strategy_name} failed: {e}", exc_info=True)
+                logger.error(f"Strategy {strategy.strategy_name} failed: {e}", exc_info=True)
                 continue
         
         # Filter and deduplicate
         valid_dealers = [d for d in all_dealers if data_cleaner.is_valid_dealership(d)]
-        self.logger.info(f"Valid dealerships after filtering: {len(valid_dealers)}")
+        logger.info(f"Valid dealerships after filtering: {len(valid_dealers)}")
         
         unique_dealers = data_cleaner.deduplicate_dealers(valid_dealers)
-        self.logger.info(f"Unique dealerships after deduplication: {len(unique_dealers)}")
+        logger.info(f"Unique dealerships after deduplication: {len(unique_dealers)}")
         
         return unique_dealers
     
