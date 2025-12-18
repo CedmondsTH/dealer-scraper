@@ -89,8 +89,7 @@ class StreamlitUI:
             except Exception as e:
                 logger.warning(f"Failed to load logo: {e}")
         
-        st.title("Dealer Location Scraper")
-        st.markdown("Professional automotive dealership data extraction platform")
+        st.title("Dealer Scraper")
     
     def render_input_form(self) -> Tuple[str, str]:
         """
@@ -360,16 +359,16 @@ class StreamlitUI:
             # Main form
             dealer_name, url = self.render_input_form()
             
-            # Validation
-            validation_error = self.validate_inputs(dealer_name, url)
-            if validation_error:
-                st.warning(validation_error)
-            
-            # Extract button
-            if st.button("Extract Dealerships", type="primary", disabled=bool(validation_error)):
-                df = self.perform_scraping(dealer_name, url)
-                if df is not None:
-                    st.session_state.last_result = (df, dealer_name)
+            # Extract button - always visible and enabled
+            if st.button("Extract Dealerships", type="primary"):
+                # Validate inputs when button is clicked
+                validation_error = self.validate_inputs(dealer_name, url)
+                if validation_error:
+                    st.warning(validation_error)
+                else:
+                    df = self.perform_scraping(dealer_name, url)
+                    if df is not None:
+                        st.session_state.last_result = (df, dealer_name)
             
             # Display last result if available
             if st.session_state.last_result:
