@@ -9,6 +9,9 @@ RUN playwright install-deps chromium
 
 COPY . .
 
+# Make start script executable
+RUN chmod +x start.sh
+
 EXPOSE 8501
 
-CMD ["streamlit", "run", "run.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+CMD ["./start.sh"]

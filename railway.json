@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "streamlit run run.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false",
+    "startCommand": "./start.sh",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300
   }
