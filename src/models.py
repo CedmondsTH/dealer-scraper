@@ -4,12 +4,15 @@ Uses Pydantic for robust data validation and type safety.
 """
 
 from typing import Optional
+
 from pydantic import BaseModel, Field, field_validator
+
 
 class Dealer(BaseModel):
     """
     Represents a standardized dealer location.
     """
+
     name: str = Field(..., alias="Dealership")
     group: str = Field(..., alias="Dealer Group")
     type: str = Field("Unknown", alias="Dealership Type")
@@ -22,17 +25,14 @@ class Dealer(BaseModel):
     country: str = Field("United States of America", alias="Country")
     website: str = Field("", alias="Website")
 
-    model_config = {
-        "populate_by_name": True,
-        "extra": "ignore"
-    }
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
-    @field_validator('state')
+    @field_validator("state")
     @classmethod
     def uppercase_state(cls, v: str) -> str:
         return v.strip().upper() if v else v
 
-    @field_validator('website')
+    @field_validator("website")
     @classmethod
     def clean_website(cls, v: str) -> str:
         if not v:

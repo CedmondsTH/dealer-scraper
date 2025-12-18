@@ -1,9 +1,11 @@
 """
 Pytest configuration and shared fixtures for dealer scraper tests.
 """
+
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from typing import Dict, Any, List
-from unittest.mock import Mock, MagicMock
 
 # Sample HTML for testing
 SAMPLE_DEALER_HTML = """
@@ -61,14 +63,14 @@ def lithia_html():
 def sample_dealer_data():
     """Sample dealer data dictionary."""
     return {
-        'name': 'ABC Toyota',
-        'street': '123 Main St',
-        'city': 'Boston',
-        'state': 'MA',
-        'zip': '02101',
-        'phone': '(555) 123-4567',
-        'website': 'https://example.com',
-        'page_url': 'https://example.com/locations'
+        "name": "ABC Toyota",
+        "street": "123 Main St",
+        "city": "Boston",
+        "state": "MA",
+        "zip": "02101",
+        "phone": "(555) 123-4567",
+        "website": "https://example.com",
+        "page_url": "https://example.com/locations",
     }
 
 
@@ -77,25 +79,25 @@ def sample_dealers_list():
     """Sample list of dealer data."""
     return [
         {
-            'name': 'ABC Toyota',
-            'street': '123 Main St',
-            'city': 'Boston',
-            'state': 'MA',
-            'zip': '02101',
-            'phone': '(555) 123-4567',
-            'website': 'https://example.com',
-            'page_url': 'https://example.com/locations'
+            "name": "ABC Toyota",
+            "street": "123 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": "02101",
+            "phone": "(555) 123-4567",
+            "website": "https://example.com",
+            "page_url": "https://example.com/locations",
         },
         {
-            'name': 'XYZ Honda',
-            'street': '456 Oak Ave',
-            'city': 'Cambridge',
-            'state': 'MA',
-            'zip': '02139',
-            'phone': '(555) 987-6543',
-            'website': 'https://example.com',
-            'page_url': 'https://example.com/locations'
-        }
+            "name": "XYZ Honda",
+            "street": "456 Oak Ave",
+            "city": "Cambridge",
+            "state": "MA",
+            "zip": "02139",
+            "phone": "(555) 987-6543",
+            "website": "https://example.com",
+            "page_url": "https://example.com/locations",
+        },
     ]
 
 
@@ -104,35 +106,35 @@ def duplicate_dealers_list():
     """Sample list with duplicate dealers."""
     return [
         {
-            'name': 'ABC Toyota',
-            'street': '123 Main St',
-            'city': 'Boston',
-            'state': 'MA',
-            'zip': '02101',
-            'phone': '(555) 123-4567',
-            'website': 'https://example.com',
-            'page_url': 'https://example.com/locations'
+            "name": "ABC Toyota",
+            "street": "123 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": "02101",
+            "phone": "(555) 123-4567",
+            "website": "https://example.com",
+            "page_url": "https://example.com/locations",
         },
         {
-            'name': 'ABC Toyota',  # Duplicate
-            'street': '123 Main St',
-            'city': 'Boston',
-            'state': 'MA',
-            'zip': '02101',
-            'phone': '(555) 123-4567',
-            'website': 'https://example.com',
-            'page_url': 'https://example.com/locations'
+            "name": "ABC Toyota",  # Duplicate
+            "street": "123 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip": "02101",
+            "phone": "(555) 123-4567",
+            "website": "https://example.com",
+            "page_url": "https://example.com/locations",
         },
         {
-            'name': 'XYZ Honda',
-            'street': '456 Oak Ave',
-            'city': 'Cambridge',
-            'state': 'MA',
-            'zip': '02139',
-            'phone': '(555) 987-6543',
-            'website': 'https://example.com',
-            'page_url': 'https://example.com/locations'
-        }
+            "name": "XYZ Honda",
+            "street": "456 Oak Ave",
+            "city": "Cambridge",
+            "state": "MA",
+            "zip": "02139",
+            "phone": "(555) 987-6543",
+            "website": "https://example.com",
+            "page_url": "https://example.com/locations",
+        },
     ]
 
 
@@ -150,15 +152,15 @@ def mock_data_service():
     service = Mock()
     service.process_dealer_data.return_value = [
         {
-            'Dealership': 'ABC Toyota',
-            'Dealer Group': 'Test Group',
-            'Address': '123 Main St',
-            'City': 'Boston',
-            'State/Province': 'MA',
-            'Postal Code': '02101',
-            'Phone': '(555) 123-4567',
-            'Website': 'https://example.com',
-            'Country': 'USA'
+            "Dealership": "ABC Toyota",
+            "Dealer Group": "Test Group",
+            "Address": "123 Main St",
+            "City": "Boston",
+            "State/Province": "MA",
+            "Postal Code": "02101",
+            "Phone": "(555) 123-4567",
+            "Website": "https://example.com",
+            "Country": "USA",
         }
     ]
     return service
@@ -167,11 +169,7 @@ def mock_data_service():
 @pytest.fixture
 def mock_playwright_response():
     """Mock Playwright subprocess response."""
-    return {
-        'success': True,
-        'data': SAMPLE_DEALER_HTML,
-        'error': None
-    }
+    return {"success": True, "data": SAMPLE_DEALER_HTML, "error": None}
 
 
 @pytest.fixture
@@ -184,4 +182,3 @@ def test_url():
 def test_dealer_name():
     """Sample dealer name."""
     return "Test Dealer Group"
-

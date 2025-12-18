@@ -1,6 +1,7 @@
-from typing import List, Dict, Any
-from bs4 import BeautifulSoup
 import re
+from typing import Any, Dict, List
+
+from bs4 import BeautifulSoup
 
 from ..base_scraper import ScraperStrategy
 
@@ -16,7 +17,9 @@ class DealerDotComLocationsStrategy(ScraperStrategy):
         soup = BeautifulSoup(html, "lxml")
 
         # Typical structure: <div class="dealer-list"> with <ol id="proximity-dealer-list">
-        has_dealer_list = bool(soup.select_one("div.dealer-list ol#proximity-dealer-list"))
+        has_dealer_list = bool(
+            soup.select_one("div.dealer-list ol#proximity-dealer-list")
+        )
 
         # Presence of vcard entries with org/locality/region
         vcard_samples = soup.select("ol#proximity-dealer-list li .vcard .org")
@@ -41,13 +44,31 @@ class DealerDotComLocationsStrategy(ScraperStrategy):
                 continue
 
             # Address parts
-            street = (vcard.select_one(".street-address") or {}).get_text(strip=True) if vcard.select_one(".street-address") else ""
-            city = (vcard.select_one(".locality") or {}).get_text(strip=True) if vcard.select_one(".locality") else ""
-            state = (vcard.select_one(".region") or {}).get_text(strip=True) if vcard.select_one(".region") else ""
-            zip_code = (vcard.select_one(".postal-code") or {}).get_text(strip=True) if vcard.select_one(".postal-code") else ""
+            street = (
+                (vcard.select_one(".street-address") or {}).get_text(strip=True)
+                if vcard.select_one(".street-address")
+                else ""
+            )
+            city = (
+                (vcard.select_one(".locality") or {}).get_text(strip=True)
+                if vcard.select_one(".locality")
+                else ""
+            )
+            state = (
+                (vcard.select_one(".region") or {}).get_text(strip=True)
+                if vcard.select_one(".region")
+                else ""
+            )
+            zip_code = (
+                (vcard.select_one(".postal-code") or {}).get_text(strip=True)
+                if vcard.select_one(".postal-code")
+                else ""
+            )
 
             # Phone
-            phone_el = vcard.select_one("ul.tels li.tel .value [data-phone-ref], ul.tels li.tel .value, a[href^='tel:']")
+            phone_el = vcard.select_one(
+                "ul.tels li.tel .value [data-phone-ref], ul.tels li.tel .value, a[href^='tel:']"
+            )
             phone = ""
             if phone_el:
                 text = phone_el.get_text(strip=True)
@@ -75,4 +96,3 @@ class DealerDotComLocationsStrategy(ScraperStrategy):
             )
 
         return dealers
-

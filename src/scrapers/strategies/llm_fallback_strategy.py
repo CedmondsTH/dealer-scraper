@@ -1,12 +1,12 @@
-from typing import List, Dict, Any
 import os
 import re
-from bs4 import BeautifulSoup
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-from ..base_scraper import ScraperStrategy
-from ...services.rule_store import RuleStore, DomainRule
+from bs4 import BeautifulSoup
 
+from ...services.rule_store import DomainRule, RuleStore
+from ..base_scraper import ScraperStrategy
 
 PROMPT = (
     "You are an information extractor. Given an HTML snippet of a dealer group page, "
@@ -46,31 +46,40 @@ class LLMExtractorStrategy(ScraperStrategy):
 
         # Get API key from environment
         api_key = os.environ.get("OPENAI_API_KEY")
-        
+
         # TEMPORARY: Hardcode API key for testing
         if not api_key:
             print("ERROR: No API key in environment, using hardcoded key for testing")
             api_key = os.environ.get("OPENAI_API_KEY")
-        
+
         if not api_key:
             print("ERROR: No API key available")
             return []
-        
+
         print(f"DEBUG: Using OpenAI API key: {api_key[:20]}...")
 
         client = OpenAI(api_key=api_key)
-        
+
         try:
             completion = client.chat.completions.create(
                 model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
-                messages=[{"role": "system", "content": PROMPT}, {"role": "user", "content": text_html}],
+                messages=[
+                    {"role": "system", "content": PROMPT},
+                    {"role": "user", "content": text_html},
+                ],
                 temperature=0,
-                response_format={"type": "json_object"} if os.environ.get("LLM_JSON_OBJECT") else None,
+                response_format=(
+                    {"type": "json_object"}
+                    if os.environ.get("LLM_JSON_OBJECT")
+                    else None
+                ),
             )
         except Exception as e:
             print(f"ERROR: LLM API call failed: {str(e)}")
             if "rate limit" in str(e).lower():
-                print("ERROR: OpenAI API rate limit exceeded. The scraper will continue without LLM fallback.")
+                print(
+                    "ERROR: OpenAI API rate limit exceeded. The scraper will continue without LLM fallback."
+                )
             elif "quota" in str(e).lower():
                 print("ERROR: OpenAI API quota exceeded. Please check your billing.")
             else:
@@ -80,6 +89,7 @@ class LLMExtractorStrategy(ScraperStrategy):
         content = completion.choices[0].message.content
         # Try to find JSON array in the response
         import json
+
         try:
             data = json.loads(content)
             if isinstance(data, dict) and "items" in data:
@@ -92,6 +102,7 @@ class LLMExtractorStrategy(ScraperStrategy):
             # Fallback: extract first JSON array
             m = re.search(r"\[(?:.|\n)*\]", content)
             import json
+
             items = json.loads(m.group(0)) if m else []
 
         # Validate and normalize; also attempt to promote a basic learned rule
@@ -117,18 +128,20 @@ class LLMExtractorStrategy(ScraperStrategy):
             if phone and not re.search(r"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}", phone):
                 phone = ""
 
-            dealers.append({
-                "Name": name,
-                "Street": street,
-                "City": city,
-                "State": state,
-                "Zip": zip_code,
-                "Phone": phone,
-                "Website": website,
-                "Country": "USA",
-                "DealerType": "New Car Dealer",
-                "CarBrands": "",
-            })
+            dealers.append(
+                {
+                    "Name": name,
+                    "Street": street,
+                    "City": city,
+                    "State": state,
+                    "Zip": zip_code,
+                    "Phone": phone,
+                    "Website": website,
+                    "Country": "USA",
+                    "DealerType": "New Car Dealer",
+                    "CarBrands": "",
+                }
+            )
 
         # Heuristic promotion (very conservative): if we found >= 3 items, store rules
         if len(dealers) >= 3:
@@ -140,7 +153,7 @@ class LLMExtractorStrategy(ScraperStrategy):
                 card_selector="section, div, li",  # coarse; refined later by operator or auto-tuner
                 fields={
                     "name": "b, strong, h2, h3",
-                    "street": "p, .address, .street", 
+                    "street": "p, .address, .street",
                     "city_state_zip": ".address, p",
                     "phone": "a[href^='tel:'], .phone",
                     "website": "a[href^='http']",
@@ -148,7 +161,7 @@ class LLMExtractorStrategy(ScraperStrategy):
                 dom_signature="",
                 success_count=0,
             )
-            
+
             # Store pattern-based rule for similar layouts
             pattern_signature = self._generate_layout_signature(html)
             if pattern_signature:
@@ -159,7 +172,7 @@ class LLMExtractorStrategy(ScraperStrategy):
                     card_selector=".location-item, .dealer-location, .store-location, [class*='location'][class*='item'], [class*='dealer'][class*='card'], section:has(.address)",
                     fields={
                         "name": "h3, h4, h5, .location-name, .dealer-name, .store-name, strong:first-of-type, b:first-of-type",
-                        "street": ".address .street, .location .address, .address-line, [class*='street'], .addr:first-line", 
+                        "street": ".address .street, .location .address, .address-line, [class*='street'], .addr:first-line",
                         "city_state_zip": ".address .city-state-zip, .location .city-state, .address-line:last-of-type, [class*='city-state']",
                         "phone": "a[href^='tel:'], .phone, [class*='phone'], [href*='tel:']",
                         "website": "a[href^='http']:not([href*='directions']):not([href*='maps']), [href*='http']",
@@ -167,7 +180,7 @@ class LLMExtractorStrategy(ScraperStrategy):
                     dom_signature=pattern_signature,
                     success_count=1,
                 )
-                
+
             try:
                 self.store.upsert(domain_rule)
                 if pattern_signature:
@@ -182,53 +195,68 @@ class LLMExtractorStrategy(ScraperStrategy):
         """Generate a layout signature based on HTML structure patterns."""
         try:
             soup = BeautifulSoup(html, "lxml")
-            
+
             # Analyze structure patterns
             signatures = []
-            
+
             # Count common container patterns
-            sections = len(soup.find_all(['section', 'div', 'article'], class_=lambda x: x and any(
-                keyword in x.lower() for keyword in ['location', 'dealer', 'store', 'office', 'branch']
-            )))
+            sections = len(
+                soup.find_all(
+                    ["section", "div", "article"],
+                    class_=lambda x: x
+                    and any(
+                        keyword in x.lower()
+                        for keyword in [
+                            "location",
+                            "dealer",
+                            "store",
+                            "office",
+                            "branch",
+                        ]
+                    ),
+                )
+            )
             if sections >= 3:
                 signatures.append(f"containers:{sections}")
-            
+
             # Check for list patterns
-            lists = soup.find_all(['ul', 'ol'])
-            list_items = sum(len(lst.find_all('li')) for lst in lists)
+            lists = soup.find_all(["ul", "ol"])
+            list_items = sum(len(lst.find_all("li")) for lst in lists)
             if list_items >= 3:
                 signatures.append(f"lists:{list_items}")
-            
+
             # Check for address-like patterns
-            address_patterns = soup.find_all(text=lambda text: text and re.search(
-                r'\d+\s+[A-Za-z\s]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive)',
-                text
-            ))
+            address_patterns = soup.find_all(
+                text=lambda text: text
+                and re.search(
+                    r"\d+\s+[A-Za-z\s]+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive)",
+                    text,
+                )
+            )
             if len(address_patterns) >= 3:
                 signatures.append("addresses:multiple")
-            
+
             # Check for phone patterns
-            phone_patterns = soup.find_all(text=lambda text: text and re.search(
-                r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
-                text
-            ))
+            phone_patterns = soup.find_all(
+                text=lambda text: text
+                and re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", text)
+            )
             if len(phone_patterns) >= 3:
                 signatures.append("phones:multiple")
-            
+
             # Check for state patterns (common in dealer listings)
-            state_patterns = soup.find_all(text=lambda text: text and re.search(
-                r'\b[A-Z]{2}\s+\d{5}',  # State code + ZIP
-                text
-            ))
+            state_patterns = soup.find_all(
+                text=lambda text: text
+                and re.search(r"\b[A-Z]{2}\s+\d{5}", text)  # State code + ZIP
+            )
             if len(state_patterns) >= 3:
                 signatures.append("states:multiple")
-            
+
             # Generate final signature
             if len(signatures) >= 2:  # Need at least 2 pattern indicators
                 return "layout:" + "|".join(sorted(signatures))
-            
-            return ""
-            
-        except Exception:
+
             return ""
 
+        except Exception:
+            return ""

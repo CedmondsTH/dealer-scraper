@@ -5,23 +5,24 @@ Runs Playwright in a separate process to bypass Windows event loop issues.
 """
 
 import json
+import logging
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 def fetch_with_playwright_subprocess(url: str, timeout: int = 30000) -> Optional[str]:
     """
     Fetch page content using Playwright in a subprocess to avoid asyncio conflicts.
-    
+
     Args:
         url: URL to fetch
         timeout: Timeout in milliseconds
-        
+
     Returns:
         HTML content or None if failed
     """
@@ -100,12 +101,12 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-        
+
         # Write script to temp file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(script_content)
             script_path = f.name
-        
+
         try:
             # Run Playwright in subprocess
             logger.info(f"Running Playwright subprocess for: {{url}}")
@@ -114,34 +115,40 @@ if __name__ == "__main__":
                 capture_output=True,
                 text=True,
                 timeout=timeout // 1000 + 10,  # Add buffer to subprocess timeout
-                cwd=Path(__file__).parent.parent.parent  # Run from project root
+                cwd=Path(__file__).parent.parent.parent,  # Run from project root
             )
-            
+
             if result.returncode == 0:
                 try:
                     data = json.loads(result.stdout.strip())
                     if data.get("success"):
-                        logger.info(f"Playwright subprocess success: {{data.get('length', 0)}} characters")
+                        logger.info(
+                            f"Playwright subprocess success: {{data.get('length', 0)}} characters"
+                        )
                         return data.get("html")
                     else:
-                        logger.error(f"Playwright subprocess error: {{data.get('error')}}")
+                        logger.error(
+                            f"Playwright subprocess error: {{data.get('error')}}"
+                        )
                         return None
                 except json.JSONDecodeError as e:
                     logger.error(f"Failed to parse subprocess output: {{e}}")
                     logger.debug(f"Raw output: {{result.stdout[:500]}}")
                     return None
             else:
-                logger.error(f"Playwright subprocess failed with code {{result.returncode}}")
+                logger.error(
+                    f"Playwright subprocess failed with code {{result.returncode}}"
+                )
                 logger.error(f"Stderr: {{result.stderr}}")
                 return None
-                
+
         finally:
             # Clean up temp file
             try:
                 Path(script_path).unlink()
             except:
                 pass
-                
+
     except Exception as e:
         logger.error(f"Subprocess wrapper failed: {{e}}")
         return None

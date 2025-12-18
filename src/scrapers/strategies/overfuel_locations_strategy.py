@@ -1,5 +1,6 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
+
 from bs4 import BeautifulSoup
 
 from ..base_scraper import ScraperStrategy
@@ -16,8 +17,12 @@ class OverfuelLocationsStrategy(ScraperStrategy):
         soup = BeautifulSoup(html, "html.parser")
 
         has_overfuel_brand = "overfuel" in html.lower()
-        has_locations_header = bool(soup.find(text=lambda t: t and "Find a Location" in t))
-        has_microformat_spans = bool(soup.select("a[href*='google.com/maps/search'] .street-address"))
+        has_locations_header = bool(
+            soup.find(text=lambda t: t and "Find a Location" in t)
+        )
+        has_microformat_spans = bool(
+            soup.select("a[href*='google.com/maps/search'] .street-address")
+        )
 
         return has_overfuel_brand or (has_locations_header and has_microformat_spans)
 
@@ -57,7 +62,11 @@ class OverfuelLocationsStrategy(ScraperStrategy):
             parent = anchor
             for _ in range(3):
                 parent = parent.parent if parent and parent.parent else parent
-            tel_link = parent.select_one("a[href^='tel:']") if hasattr(parent, "select_one") else None
+            tel_link = (
+                parent.select_one("a[href^='tel:']")
+                if hasattr(parent, "select_one")
+                else None
+            )
             if tel_link:
                 phone = tel_link.get("href", "").replace("tel:", "").strip()
 
@@ -66,15 +75,17 @@ class OverfuelLocationsStrategy(ScraperStrategy):
                 continue
             seen.add(key)
 
-            dealers.append({
-                "name": name,
-                "street": street,
-                "city": city,
-                "state": state,
-                "zip": zip_code,
-                "phone": phone,
-                "website": page_url,
-            })
+            dealers.append(
+                {
+                    "name": name,
+                    "street": street,
+                    "city": city,
+                    "state": state,
+                    "zip": zip_code,
+                    "phone": phone,
+                    "website": page_url,
+                }
+            )
 
         # Pass B: card-based enrichment/additions (if any cards weren’t covered)
         for card in soup.select("div.card"):
@@ -83,7 +94,9 @@ class OverfuelLocationsStrategy(ScraperStrategy):
             if not anchor:
                 continue
 
-            name = (header_name_el.get_text(strip=True) if header_name_el else "").strip()
+            name = (
+                header_name_el.get_text(strip=True) if header_name_el else ""
+            ).strip()
             if not name:
                 name_el = anchor.select_one("b, .org")
                 if name_el:
@@ -110,22 +123,25 @@ class OverfuelLocationsStrategy(ScraperStrategy):
                 continue
 
             tel_link = card.select_one("a[href^='tel:']")
-            phone = tel_link.get("href", "").replace("tel:", "").strip() if tel_link else ""
+            phone = (
+                tel_link.get("href", "").replace("tel:", "").strip() if tel_link else ""
+            )
 
             key = (name.lower(), street.lower(), city.lower())
             if key in seen:
                 continue
             seen.add(key)
 
-            dealers.append({
-                "name": name,
-                "street": street,
-                "city": city,
-                "state": state,
-                "zip": zip_code,
-                "phone": phone,
-                "website": page_url,
-            })
+            dealers.append(
+                {
+                    "name": name,
+                    "street": street,
+                    "city": city,
+                    "state": state,
+                    "zip": zip_code,
+                    "phone": phone,
+                    "website": page_url,
+                }
+            )
 
         return dealers
-

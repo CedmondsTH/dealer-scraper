@@ -1,6 +1,7 @@
-from typing import List, Dict, Any
-from bs4 import BeautifulSoup
 import re
+from typing import Any, Dict, List
+
+from bs4 import BeautifulSoup
 
 from ..base_scraper import ScraperStrategy
 
@@ -19,11 +20,19 @@ class DealerDotComContentBlocksStrategy(ScraperStrategy):
 
         # Dealer.com indicator
         provider_meta = soup.select_one('meta[name="providerID"][content="DDC"]')
-        has_ddc_blocks = bool(soup.select("div.ddc-content.content-default .text-content-container"))
+        has_ddc_blocks = bool(
+            soup.select("div.ddc-content.content-default .text-content-container")
+        )
         # Some sites (e.g., Baker Auto Group home) list stores without a Locations title
-        visit_site_links = [a for a in soup.find_all("a") if "visit site" in (a.get_text(" ", strip=True) or "").lower()]
+        visit_site_links = [
+            a
+            for a in soup.find_all("a")
+            if "visit site" in (a.get_text(" ", strip=True) or "").lower()
+        ]
         has_visit_site = len(visit_site_links) >= 2
-        mentions_dealer_com = "dealer.com" in (soup.get_text(" ", strip=True) or "").lower()
+        mentions_dealer_com = (
+            "dealer.com" in (soup.get_text(" ", strip=True) or "").lower()
+        )
 
         # Be permissive: run on pages with repeated Visit Site links or DDC content blocks
         return has_ddc_blocks or has_visit_site
@@ -35,13 +44,21 @@ class DealerDotComContentBlocksStrategy(ScraperStrategy):
         blocks = soup.select("div.ddc-content.content-default .text-content-container")
         if not blocks:
             # Fallback: collect containers around repeated "Visit Site" links
-            visit_links = [a for a in soup.find_all("a") if "visit site" in (a.get_text(" ", strip=True) or "").lower()]
+            visit_links = [
+                a
+                for a in soup.find_all("a")
+                if "visit site" in (a.get_text(" ", strip=True) or "").lower()
+            ]
             candidates = []
             for a in visit_links:
                 # Go up to a reasonable container (Dealer.com often nests within a few divs)
                 container = a
                 for _ in range(4):
-                    if container and container.parent and container.parent.name in ("div", "section", "li", "article"):
+                    if (
+                        container
+                        and container.parent
+                        and container.parent.name in ("div", "section", "li", "article")
+                    ):
                         container = container.parent
                     else:
                         break
@@ -54,21 +71,87 @@ class DealerDotComContentBlocksStrategy(ScraperStrategy):
         phone_regex = re.compile(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
         # Accept multiple city/state/zip formats commonly found on Dealer.com content blocks
         city_state_zip_patterns = [
-            re.compile(r"^([^,<>]+),\s*([A-Z]{2})\s*(\d{5})(?:-\d{4})?$"),                 # City, ST 12345
-            re.compile(r"^([^,<>]+)\s+([A-Z]{2}),\s*(\d{5})(?:-\d{4})?$"),                 # City ST, 12345
-            re.compile(r"^([^,<>]+)\s+([A-Z]{2})\s*(\d{5})(?:-\d{4})?$"),                  # City ST 12345 (no comma)
-            re.compile(r"^([^,<>]+),\s*([A-Za-z][A-Za-z ]+)\s*(\d{5})(?:-\d{4})?$"),       # City, StateName 12345
-            re.compile(r"^([^,<>]+)\s+([A-Za-z][A-Za-z ]+),\s*(\d{5})(?:-\d{4})?$"),       # City StateName, 12345
-            re.compile(r"^([^,<>]+),\s*([A-Z]{2})\s*(\d{4})(?:-\d{4})?$"),                 # City, ST 1234 (handle bad 4-digit zips)
-            re.compile(r"^([^,<>]+)\s+([A-Z]{2}),\s*(\d{4})(?:-\d{4})?$"),                 # City ST, 1234 (handle bad 4-digit zips)
-            re.compile(r"^([^,<>]+),\s*([A-Z]{2})$"),                                         # City, ST (no zip)
-            re.compile(r"^([^,<>]+)\s+([A-Z]{2})$"),                                          # City ST (no zip)
-            re.compile(r"^([^,<>]+),\s*([A-Za-z][A-Za-z ]+)$"),                               # City, StateName (no zip)
+            re.compile(
+                r"^([^,<>]+),\s*([A-Z]{2})\s*(\d{5})(?:-\d{4})?$"
+            ),  # City, ST 12345
+            re.compile(
+                r"^([^,<>]+)\s+([A-Z]{2}),\s*(\d{5})(?:-\d{4})?$"
+            ),  # City ST, 12345
+            re.compile(
+                r"^([^,<>]+)\s+([A-Z]{2})\s*(\d{5})(?:-\d{4})?$"
+            ),  # City ST 12345 (no comma)
+            re.compile(
+                r"^([^,<>]+),\s*([A-Za-z][A-Za-z ]+)\s*(\d{5})(?:-\d{4})?$"
+            ),  # City, StateName 12345
+            re.compile(
+                r"^([^,<>]+)\s+([A-Za-z][A-Za-z ]+),\s*(\d{5})(?:-\d{4})?$"
+            ),  # City StateName, 12345
+            re.compile(
+                r"^([^,<>]+),\s*([A-Z]{2})\s*(\d{4})(?:-\d{4})?$"
+            ),  # City, ST 1234 (handle bad 4-digit zips)
+            re.compile(
+                r"^([^,<>]+)\s+([A-Z]{2}),\s*(\d{4})(?:-\d{4})?$"
+            ),  # City ST, 1234 (handle bad 4-digit zips)
+            re.compile(r"^([^,<>]+),\s*([A-Z]{2})$"),  # City, ST (no zip)
+            re.compile(r"^([^,<>]+)\s+([A-Z]{2})$"),  # City ST (no zip)
+            re.compile(
+                r"^([^,<>]+),\s*([A-Za-z][A-Za-z ]+)$"
+            ),  # City, StateName (no zip)
         ]
 
         # Map full state names to 2-letter codes when encountered
         state_map = {
-            'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO','connecticut':'CT','delaware':'DE','district of columbia':'DC','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY'
+            "alabama": "AL",
+            "alaska": "AK",
+            "arizona": "AZ",
+            "arkansas": "AR",
+            "california": "CA",
+            "colorado": "CO",
+            "connecticut": "CT",
+            "delaware": "DE",
+            "district of columbia": "DC",
+            "florida": "FL",
+            "georgia": "GA",
+            "hawaii": "HI",
+            "idaho": "ID",
+            "illinois": "IL",
+            "indiana": "IN",
+            "iowa": "IA",
+            "kansas": "KS",
+            "kentucky": "KY",
+            "louisiana": "LA",
+            "maine": "ME",
+            "maryland": "MD",
+            "massachusetts": "MA",
+            "michigan": "MI",
+            "minnesota": "MN",
+            "mississippi": "MS",
+            "missouri": "MO",
+            "montana": "MT",
+            "nebraska": "NE",
+            "nevada": "NV",
+            "new hampshire": "NH",
+            "new jersey": "NJ",
+            "new mexico": "NM",
+            "new york": "NY",
+            "north carolina": "NC",
+            "north dakota": "ND",
+            "ohio": "OH",
+            "oklahoma": "OK",
+            "oregon": "OR",
+            "pennsylvania": "PA",
+            "rhode island": "RI",
+            "south carolina": "SC",
+            "south dakota": "SD",
+            "tennessee": "TN",
+            "texas": "TX",
+            "utah": "UT",
+            "vermont": "VT",
+            "virginia": "VA",
+            "washington": "WA",
+            "west virginia": "WV",
+            "wisconsin": "WI",
+            "wyoming": "WY",
         }
 
         for block in blocks:
@@ -154,4 +237,3 @@ class DealerDotComContentBlocksStrategy(ScraperStrategy):
                 )
 
         return dealers
-

@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import os
 import threading
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -46,7 +46,9 @@ class RuleStore:
 
     def _save(self, data: Dict[str, Any]) -> None:
         with self._lock:
-            Path(self.rules_path).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            Path(self.rules_path).write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
     def list_for_host(self, host: str) -> List[DomainRule]:
         data = self._load()
