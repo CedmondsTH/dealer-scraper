@@ -10,15 +10,20 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from io import BytesIO
 
-from ..utils.data_cleaner import data_cleaner
-from ..utils.address_parser import address_parser
-from ..models import Dealer
+from config import Constants
+from src.utils.data_cleaner import data_cleaner
+from src.utils.address_parser import address_parser
+from src.models import Dealer
+from src.exceptions import DataProcessingError, ExportError
+
+logger = logging.getLogger(__name__)
 
 class DataService:
     """Service for data processing and transformation operations."""
     
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        """Initialize the data service."""
+        pass
     
     def process_dealer_data(self, raw_dealers: List[Dict[str, Any]], 
                           dealer_group: str) -> List[Dict[str, Any]]:
@@ -31,16 +36,20 @@ class DataService:
             
         Returns:
             List of processed and standardized dealer records (as dictionaries)
+            
+        Raises:
+            DataProcessingError: If processing fails critically
         """
         try:
-            self.logger.info(f"Processing {len(raw_dealers)} raw dealer records")
+            logger.info(f"Processing {len(raw_dealers)} raw dealer records")
             
             # Step 1: Filter valid dealerships using DataCleaner
             valid_raw_dealers = [d for d in raw_dealers if data_cleaner.is_valid_dealership(d)]
-            self.logger.info(f"Valid dealerships after filtering: {len(valid_raw_dealers)}")
+            logger.info(f"Valid dealerships after filtering: {len(valid_raw_dealers)}")
             
             # Step 2: Deduplicate raw data
             unique_raw_dealers = data_cleaner.deduplicate_dealers(valid_raw_dealers)
+            logger.debug(f"Unique dealerships after deduplication: {len(unique_raw_dealers)}")
             
             # Step 3: Standardize and validate using Pydantic Model
             processed_dealers = []
@@ -50,15 +59,24 @@ class DataService:
                     # Convert back to dict for compatibility with DataFrame
                     processed_dealers.append(dealer_model.model_dump(by_alias=True))
             
-            self.logger.info(f"Final processed dealers: {len(processed_dealers)}")
+            logger.info(f"Final processed dealers: {len(processed_dealers)}")
             return processed_dealers
             
         except Exception as e:
-            self.logger.error(f"Error processing dealer data: {str(e)}", exc_info=True)
-            return []
+            logger.error(f"Error processing dealer data: {str(e)}", exc_info=True)
+            raise DataProcessingError(f"Failed to process dealer data: {e}")
     
     def _create_dealer_model(self, dealer: Dict[str, Any], dealer_group: str) -> Optional[Dealer]:
-        """Create and validate a Dealer model from raw data."""
+        """
+        Create and validate a Dealer model from raw data.
+        
+        Args:
+            dealer: Raw dealer dictionary
+            dealer_group: Name of the dealer group
+            
+        Returns:
+            Dealer model instance or None if validation fails
+        """
         try:
             # Extract and clean basic info
             name = data_cleaner.normalize_name(dealer.get("name", "") or dealer.get("Name", ""))
@@ -100,22 +118,26 @@ class DataService:
             )
             
         except Exception as e:
-            # self.logger.warning(f"Failed to create Dealer model: {str(e)}")
+            logger.debug(f"Failed to create Dealer model for {dealer.get('name', 'unknown')}: {str(e)}")
             return None
     
     def create_dataframe(self, dealers: List[Dict[str, Any]]) -> pd.DataFrame:
-        """Create a pandas DataFrame from dealer data."""
+        """
+        Create a pandas DataFrame from dealer data.
+        
+        Args:
+            dealers: List of dealer dictionaries
+            
+        Returns:
+            DataFrame with standardized column order
+        """
         if not dealers:
             return pd.DataFrame()
         
         df = pd.DataFrame(dealers)
         
-        # Ensure column order
-        desired_order = [
-            "Dealership", "Dealer Group", "Dealership Type", "Car Brand", 
-            "Address", "City", "State/Province", "Postal Code", 
-            "Phone", "Country", "Website"
-        ]
+        # Ensure column order using constants
+        desired_order = Constants.OUTPUT_COLUMNS
         
         # Only include columns that exist
         existing_cols = [col for col in desired_order if col in df.columns]
@@ -125,21 +147,60 @@ class DataService:
     
     def export_to_excel(self, dealers: List[Dict[str, Any]], 
                        filename: Optional[str] = None) -> BytesIO:
-        """Export dealer data to Excel format."""
-        df = self.create_dataframe(dealers)
+        """
+        Export dealer data to Excel format.
         
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Dealer Locations")
-        
-        buffer.seek(0)
-        return buffer
+        Args:
+            dealers: List of dealer dictionaries
+            filename: Optional filename (currently unused, kept for API compatibility)
+            
+        Returns:
+            BytesIO buffer containing Excel file
+            
+        Raises:
+            ExportError: If export fails
+        """
+        try:
+            df = self.create_dataframe(dealers)
+            
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df.to_excel(writer, index=False, sheet_name="Dealer Locations")
+            
+            buffer.seek(0)
+            return buffer
+        except Exception as e:
+            logger.error(f"Failed to export to Excel: {e}")
+            raise ExportError("Excel", str(e))
     
     def export_to_csv(self, dealers: List[Dict[str, Any]]) -> str:
-        """Export dealer data to CSV format."""
-        df = self.create_dataframe(dealers)
-        return df.to_csv(index=False)
+        """
+        Export dealer data to CSV format.
+        
+        Args:
+            dealers: List of dealer dictionaries
+            
+        Returns:
+            CSV string
+            
+        Raises:
+            ExportError: If export fails
+        """
+        try:
+            df = self.create_dataframe(dealers)
+            return df.to_csv(index=False)
+        except Exception as e:
+            logger.error(f"Failed to export to CSV: {e}")
+            raise ExportError("CSV", str(e))
     
     def deduplicate_dealers(self, dealers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Deduplicate dealer records."""
+        """
+        Deduplicate dealer records.
+        
+        Args:
+            dealers: List of dealer dictionaries
+            
+        Returns:
+            Deduplicated list of dealers
+        """
         return data_cleaner.deduplicate_dealers(dealers)

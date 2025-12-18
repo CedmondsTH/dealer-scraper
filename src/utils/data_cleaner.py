@@ -6,22 +6,26 @@ dealer data extracted from various websites.
 """
 
 import re
+import logging
 from typing import Dict, List, Any
+
+from config import Constants
+
+logger = logging.getLogger(__name__)
 
 
 class DataCleaner:
     """Handles cleaning and validation of dealer data."""
     
     def __init__(self):
-        from ..config import config
         # Names that should be filtered out as invalid dealerships
-        self.invalid_names = config.INVALID_NAMES
+        self.invalid_names = Constants.INVALID_NAMES
         
         # Car brands for classification
-        self.car_brands = config.CAR_BRANDS
+        self.car_brands = Constants.CAR_BRANDS
         
         # Canadian provinces
-        self.canadian_provinces = config.CANADIAN_PROVINCES
+        self.canadian_provinces = Constants.CANADIAN_PROVINCES
     
     def is_valid_dealership(self, dealer_data: Dict[str, Any]) -> bool:
         """
@@ -33,9 +37,6 @@ class DataCleaner:
         Returns:
             True if valid dealership, False otherwise
         """
-        # Debug: print what we're validating
-        # print(f"DEBUG: Validating dealer: {dealer_data}")
-        
         # Handle both capitalized and lowercase key formats
         name = (dealer_data.get("name", "") or dealer_data.get("Name", "") or "").strip().lower()
         street = (dealer_data.get("street", "") or dealer_data.get("Street", "") or "").strip()
@@ -43,10 +44,12 @@ class DataCleaner:
         
         # Must have name and street
         if not name or not street:
+            logger.debug(f"Invalid dealer: missing name or street")
             return False
         
         # Filter out invalid names
         if name in self.invalid_names:
+            logger.debug(f"Invalid dealer: name '{name}' in invalid names list")
             return False
             
         # Filter out descriptive text that's not a dealer name
@@ -54,14 +57,17 @@ class DataCleaner:
             'treat', 'need', 'customer', 'concern', 'expectation', 'standard', 'demonstrate',
             'about', 'welcome to', 'group description', 'our mission'
         ]):
+            logger.debug(f"Invalid dealer: name '{name}' appears to be descriptive text")
             return False
             
         # Filter out mangled addresses in street field
         if len(street) > 100 or ('directions' in street.lower() and ',' in street):
+            logger.debug(f"Invalid dealer: mangled address in street field")
             return False
         
         # Filter out invalid websites
         if website.startswith("#") or website.startswith("/"):
+            logger.debug(f"Invalid dealer: invalid website format")
             return False
         
         return True

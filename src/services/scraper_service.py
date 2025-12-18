@@ -7,17 +7,20 @@ operations with proper error handling and logging.
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 from urllib.parse import urlparse
 from dataclasses import dataclass
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..scrapers.strategy_manager import get_configured_scraper
-from .web_scraper import WebScraper
-from .data_service import DataService
-from ..scrapers.strategies.new_llm_strategy import NewLLMExtractorStrategy
-from ..config import config
+from config import config
+from src.scrapers.strategy_manager import get_configured_scraper
+from src.services.web_scraper import WebScraper
+from src.services.data_service import DataService
+from src.scrapers.strategies.new_llm_strategy import NewLLMExtractorStrategy
+from src.exceptions import ScrapingError, PageFetchError, NoStrategyFoundError
+
+logger = logging.getLogger(__name__)
 
 class ScrapingStatus(Enum):
     """Status codes for scraping operations."""
@@ -45,26 +48,37 @@ class ScraperService:
     
     def __init__(self, web_scraper: Optional[WebScraper] = None, 
                  data_service: Optional[DataService] = None):
-        self.logger = logging.getLogger(__name__)
+        """
+        Initialize the scraper service.
+        
+        Args:
+            web_scraper: Optional WebScraper instance (creates new if None)
+            data_service: Optional DataService instance (creates new if None)
+        """
         self.web_scraper = web_scraper or WebScraper()
         self.data_service = data_service or DataService()
         self.extractor = get_configured_scraper()
         self.llm_fallback = NewLLMExtractorStrategy()
     
-    def scrape_dealer_locations(self, dealer_name: str, url: str, progress_callback=None) -> ScrapingResult:
+    def scrape_dealer_locations(
+        self, 
+        dealer_name: str, 
+        url: str, 
+        progress_callback: Optional[Callable[[int, str], None]] = None
+    ) -> ScrapingResult:
         """
         Scrape dealer locations from a given URL.
         
         Args:
             dealer_name: Name of the dealer group
             url: URL to scrape
-            progress_callback: Optional callback for progress updates
+            progress_callback: Optional callback function(percent: int, message: str)
             
         Returns:
             ScrapingResult with status and extracted data
         """
         try:
-            self.logger.info(f"Starting scrape for {dealer_name} at {url}")
+            logger.info(f"Starting scrape for {dealer_name} at {url}")
             
             # Step 1: Fetch web page content
             if progress_callback:
@@ -113,7 +127,7 @@ class ScraperService:
             if progress_callback:
                 progress_callback(100, f"✅ Successfully extracted {len(processed_dealers)} dealers!")
             
-            self.logger.info(f"Scraping completed: {len(processed_dealers)} dealers extracted")
+            logger.info(f"Scraping completed: {len(processed_dealers)} dealers extracted")
             
             return ScrapingResult(
                 status=success_status,
@@ -121,12 +135,28 @@ class ScraperService:
                 message=f"Successfully extracted {len(processed_dealers)} dealer locations"
             )
             
-        except Exception as e:
-            self.logger.error(f"Scraping failed for {dealer_name}: {str(e)}", exc_info=True)
+        except PageFetchError as e:
+            logger.error(f"Failed to fetch page for {dealer_name}: {e}")
+            return ScrapingResult(
+                status=ScrapingStatus.FAILED,
+                dealers=[],
+                message="Failed to fetch page",
+                error=str(e)
+            )
+        except ScrapingError as e:
+            logger.error(f"Scraping error for {dealer_name}: {e}")
             return ScrapingResult(
                 status=ScrapingStatus.FAILED,
                 dealers=[],
                 message="Scraping operation failed",
+                error=str(e)
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error for {dealer_name}: {str(e)}", exc_info=True)
+            return ScrapingResult(
+                status=ScrapingStatus.FAILED,
+                dealers=[],
+                message="Unexpected error occurred",
                 error=str(e)
             )
 
@@ -135,7 +165,7 @@ class ScraperService:
         if progress_callback:
             progress_callback(70, "No dealers found, trying enhanced scraping...")
         
-        self.logger.info("No dealers after first pass; retrying with forced Playwright fetch...")
+        logger.info("No dealers after first pass; retrying with forced Playwright fetch...")
         html_content_retry = self.web_scraper.fetch_page(url, force_playwright=True)
         
         if html_content_retry:
@@ -150,19 +180,19 @@ class ScraperService:
             if progress_callback:
                 progress_callback(80, "🤖 Using AI to extract dealer information...")
             
-            self.logger.info("Attempting LLM fallback extractor...")
+            logger.info("Attempting LLM fallback extractor...")
             dealers_llm = self.llm_fallback._extract_with_llm(html_content, url)
             
             if dealers_llm:
-                self.logger.info(f"LLM fallback extracted {len(dealers_llm)} dealers")
+                logger.info(f"LLM fallback extracted {len(dealers_llm)} dealers")
                 processed = self.data_service.process_dealer_data(dealers_llm, dealer_name)
                 if processed:
                     return processed
         except Exception as e:
-            self.logger.error(f"LLM fallback failed: {e}")
+            logger.error(f"LLM fallback failed: {e}")
 
         # Sitemap Fallback
-        self.logger.info("Attempting sitemap crawl...")
+        logger.info("Attempting sitemap crawl...")
         return self._crawl_sitemap_locations(url, dealer_name)
 
     def scrape_multiple_urls(self, dealer_name: str, urls: List[str]) -> ScrapingResult:
@@ -212,7 +242,7 @@ class ScraperService:
             base = f"{parsed.scheme}://{parsed.hostname}"
             index_url = base + "/sitemap-index.xml"
             
-            self.logger.info(f"Fetching sitemap index: {index_url}")
+            logger.info(f"Fetching sitemap index: {index_url}")
             index_html = self.web_scraper.fetch_page(index_url, save_debug=False)
             if not index_html:
                 return []
@@ -230,12 +260,14 @@ class ScraperService:
 
             unique_pages = list(dict.fromkeys(location_pages))[:500]
             if not unique_pages:
+                logger.info("No location pages found in sitemap")
                 return []
 
+            logger.info(f"Found {len(unique_pages)} location pages in sitemap")
             # Use the concurrent scraper for these pages
             result = self.scrape_multiple_urls(dealer_name, unique_pages)
             return result.dealers
 
         except Exception as e:
-            self.logger.warning(f"Sitemap crawl failed: {e}")
+            logger.warning(f"Sitemap crawl failed: {e}")
             return []
